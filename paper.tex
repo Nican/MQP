@@ -2,32 +2,13 @@
 % for research papers. Theses may be better written in the ``report''
 % format.
 
-% rename this file to foo.tex and then compile using 
-%
-%  latex foo
-%
-% view it with 
-%
-%  xdvi foo
-%
-% In order to print, create a PostScript file with
-%
-%  dvips foo
-%
-% then use
-%
-%  lpr -Pps2 foo.ps
-%
-% Have fun!
-%
-% Andreas
-%
 \documentclass{article}
 \usepackage{graphicx} 
 \usepackage{amsmath}
 \usepackage{paralist}
 \usepackage{wrapfig}
 \usepackage[all]{xy}
+\usepackage{cite}
 
 
 % set margins to 1 inch all around the page, no header or footer.
@@ -66,21 +47,18 @@
 \section{Robust Dynamic Programming}
 Model based optimal control is a powerful tool but relies heavily on the accuracy of the system model, which is not a trivial task to derive. There are many parameters involved, such as friction, sensor readings, calibrations, and the model may change over time due to wear, temperature, humidity, contact condition, and others.
 
-Eric Whitman looks into using Multiple Model Dynamic (MMD) Programming, and uses the inverted pendulum swing-up problem to demonstrate the algorithm.
-
- http://www.contrib.andrew.cmu.edu/~ewhitman/thesis.pdf
-
+Eric Whitman looks into using Multiple Model Dynamic (MMD) Programming, and uses the inverted pendulum swing-up problem to demonstrate the algorithm. \cite{eric_thesis}
  
-  By using the content provided in his thesis, the references, and example code, work on providing other students comprehensive guild on MMD for future students, we are looking at the different advantages, and shortcomings that comes with the algorithm.
+By using the content provided in his thesis, the references, and example code, work on providing other students comprehensive guild on MMD for future students, we are looking at the different advantages, and shortcomings that comes with the algorithm.
 
 Based on his previous work this paper aims to clarify the fundamental concepts of MMD and provide graspable examples. Furthermore, a faster running-time implementation using a General Purpose Graphical Processing Unit (GPGPU).
 
 \subsection{Looking at a Problem}
-	To have a better understanding on how the algorithm works, we are going to look at the  inverse pendulum swing-up example, which consists of a motor attached to the end of pendulum, and the controller aims to bring the pendulum to an upright position by applying torques based on the current state of the system. 
+To have a better understanding on how the algorithm works, we are going to look at the  inverse pendulum swing-up example, which consists of a motor attached to the end of pendulum, and the controller aims to bring the pendulum to an upright position by applying torques based on the current state of the system. 
 
 The expected behavior for the control law is to apply a torque equal to the direction the pendulum is swinging, such that more energy is added to the pendulum with each period, and when the pendulum finally has enough energy to perform a full rotation, apply a torque opposite to the movement such that the pendulum stops in an upright position.  
 
-Since our interested is in solving a variety of dynamic programming problems, we are going to look at a more generic solution that discretizes the whole state of problem, and attempts to find a adequate policy to reach the desired goal.  
+Since our interested is in solving a variety of dynamic programming problems, we are going to look at a more generic solution that discretizes the whole state of problem, and attempts to find a adequate policy to reach the desired goal.
 
 We are going to assume that the pendulum has a length, $L=1m$, and a weight, $m=1kg$, and the world has a gravity $g=9.81\frac{m}{s^2}$. The pendulum has a 2-dimensional state space, $\theta$, the angle of the pendulum relative to the up position, and $\omega$, the current velocity in radians per second. There is only a one-dimension action space, $\tau$, the force of the motor can apply, and limit it at $\pm 1.5 \frac{N}{s}$.
 
@@ -90,16 +68,16 @@ The pendulum dynamics can be described by:
 \dot{\omega} = \frac{mLg \cdot sin(\theta) + \tau}{mL^2}
 \end{equation}
 
-Define the state space as $x={\theta, \omega}$, and the action space to be $u={\tau}$. We let pointing up, $\theta = 0$, as the pendulum to be pointing up, and we are optimizing the pendulum to reach $\theta = 0$, with zero velocity, $\omega = 0$, using the minimum torque necessary. We define the cost function be to $C$:
+Define the state space as $x=\{\theta, \omega\}$, and the action space to be $u=\{\tau\}$. We define the pendulum to be pointing up at, $\theta = 0$, and we are optimizing the pendulum to reach $\theta = 0$, with zero velocity, $\omega = 0$, using the minimum torque necessary. We define the cost function be to $L$:
 
 \begin{equation} 
-C(x,u) = \omega^2 + 0.5 \cdot \omega^2 + \tau^2
+L(x,u) = \theta^2 + 0.5 \cdot \omega^2 + \tau^2
 \end{equation}
 
 And we want to minimize the total cost function, C, given by the integral: 
 
 \begin{equation} 
-C = \int L(x,u) dt %TODO: WHERE DID L COME FROM?!
+C = \int L(x,u) dt
 \end{equation}
 
 We discritize the state space of the pendulum by assuming $\theta \in  (-\pi,\pi)$, and $\omega \in (-10,10)$, and define a 2-dimensional increments of 0.016 radians, and 0.022 radians/second, giving us a table of 360,000 states. We also assume a time step of T=0.003 second delay between each action, and sensor reading of the current pendulum state. We define the iteration function:
@@ -123,7 +101,7 @@ For each state of the pendulum, we define two elements, the value $V(x) = {v}$, 
 V'(x) = C(x,u) + \gamma V(x_{k+1}(\{\tau '\}))
 \end{equation}
 
-And if $V'(x)<C(x,u) + \omega V(x_{k+1}(U(x))), we let V'(x)$ and $U(x)={\tau'}$.
+And if $V'(x)<C(x,u) + \gamma V(x_{k+1}(U(x)))$, we let $V'(x)$ and $U(x)={\tau'}$.
 
 We run the previous operation on all states of the grid for an uncertain number of times. For this particular program, running this optimization for 1000 iterations is siffucient for making the pendulum converge to the desired goal state, but it can also be noted that running for 10000 times generates a more torque efficient solution.
 
@@ -168,7 +146,7 @@ Since this is the first iteration of this equation, the second term of the value
 
 
 \begin{equation} 
-{x'}_1
+{x'}_1 = 
 \begin{bmatrix}
 \frac{\pi}{2} + 0.003048645 \\
 1.03243
@@ -180,9 +158,9 @@ We find the new value of
 V'(x) = 2.6062750
 \end{equation}
 
-Since 2.6032705 < 2.6062750, we learn that we are applying a torque in the wrong direction, and it is better to let gravity pull on the pendulum instead of applying addition torque, and keep the value, $U(x)={0}$. Now suppose we guess $\tau = -1$, we find that 
+Since $2.6032705 < 2.6062750$, we learn that we are applying a torque in the wrong direction, and it is better to let gravity pull on the pendulum instead of applying addition torque, and keep the value, $U(x)={0}$. Now suppose we guess $\tau = -1$, we find that 
 \begin{equation} 
-{x'}_1
+{x'}_1 = 
 \begin{bmatrix}
 \frac{\pi}{2} + 0.003039645 \\
 1.02643
@@ -193,7 +171,7 @@ With the value
 V'(x) = 2.6002660
 \end{equation}
 
-Since 2.6032705 > 2.6002660, we change the value $U(x_0)={-1}$. Giving a new optimal torque to apply at that point.
+Since $2.6032705 > 2.6002660$, we change the value $U(x_0)={-1}$. Giving a new optimal torque to apply at that point.
 
 It is important to notice the optimal torque may completely change directions throughout the iterations due to the value of the neighbours changing. (Further details with the video)
 
@@ -218,13 +196,11 @@ While the second step is usually done by hardware, hidden away from developers, 
 
 of game companies, this gave incentives for companies to develop dedicated hardware that process each of the points as quickly as possible.
 
-Until 2001 developers could only use shaders that were pre-programmed into the hardware, and then Direct3D 8 (http://en.wikipedia.org/wiki/Direct3D) gave developers the option to program custom shaders that run in the hardware.
+Until 2001 developers could only use shaders that were pre-programmed into the hardware, and then Direct3D 8 \cite{wiki:direct3d} gave developers the option to program custom shaders that run in the hardware.
 
-The main drive for GPU development was for computer graphics, but a technique known as fragment processing (?) was used to perform other types of computation. Fragment processing involves data processing and storage through image textures.
+The main drive for GPU development was for computer graphics, but using some technique, one could speed up large linear algebra processing using storage through image textures. \cite{Goeddeke:2005:GBM}
 
 For example, OpenGL could be used to perform the multiplication of two 256 by 256 matrices. In this case, three texture buffers would be created inside of the GPU, each of the size of the matrix, and two of them would be loaded with the read-only input matrices values from the main computer memory, while the other one would be used as a render texture. When the fragment shader runs over all the pixels of the render texture, the user defined program would read the necessary values from the other two matrices and render the corresponding output value. 
-
-http://www.mathematik.uni-dortmund.de/~goeddeke/gpgpu/tutorial.html
 
 Later during 2007, NVIDIA released CUDA, a general purpose computing standard that would allow developers to create GPU based software, and later on 2008, the open source community followed with OpenCL. While OpenCL and CUDA follows the same principles as fragment shaders, it also opened doors for other applications, such as atomic operations, thread syncing, memory barriers, and others.
 
@@ -336,13 +312,19 @@ Most of the math executed is done with the help with Eigen, a C++ template libra
 
 \section{Full-body controller}
 Intro...Carnegie Mellon University developed custom software for controlling the robot, which involves two major aspects that are solve using Quadratic programming, an Inverse Kinematics solver, and an Inverse Dynamics solver. 
+
 \subsection{Inverse Kinematics}
+Inverse kinematics is the process of given an desired end effector position, generate a joint state that will as close as possible achieve the goal. There exists a great deal of research, and libraries that provide fast and concise solutions, but most of the research assumes that the base of the joint system does not move, such as one that you might find on a factory. 
+
+Atlas is a bipedal robot, it is not simple to define a set of rules that describes all possible motions. 
+
+We perform a trick, we define the robot as skeleton starting from the pelvis, but when we generate Jacobians to move the end effector of each limbs, we also give it the ability to move the pelvis on a global coordinate frame. 
 
 \subsection{Inverse Dynamics}
 
 \subsection{Quadratic Programming}
 
-The gradratic programming is solved using a re-written version of QuadProg++[http://quadprog.sourceforge.net/], but adapted to use Eigen. 
+The gradratic programming is solved using a re-written version of QuadProg++[http://quadprog.sourceforge.net/], but adapted to use Eigen. The algorithm implements the Goldfarb-Idnani active-set dual method. At present it is limited to the solution of strictly convex quadratic programs. \cite{quadprog}
 
 The 
 
@@ -386,8 +368,11 @@ The
 %  \end{center}
 %\end{figure}
 
-\end{document}
 
+
+\bibliography{referencex}
+\bibliographystyle{plain}
+\end{document}
 
 
 
