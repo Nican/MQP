@@ -318,7 +318,57 @@ Inverse kinematics is the process of given an desired end effector position, gen
 
 Atlas is a bipedal robot, it is not simple to define a set of rules that describes all possible motions. 
 
-We perform a trick, we define the robot as skeleton starting from the pelvis, but when we generate Jacobians to move the end effector of each limbs, we also give it the ability to move the pelvis on a global coordinate frame. 
+The library SD/Fast provides physically-based simulation of mechanical systems by taking a short description of an articulated system of rigid bodies and deriving the full nonlinear equations of the system. \cite{sdfast} The library takes several key factors about each sub-body in the robot, such as the link positions, mass, and inertia. The library than generates a C file that provides informations such as the center of mass, jacobians, and positions. 
+
+During this current iteration we have the following competing Jacobians that control the robot: 
+\begin{enumerate}
+\item Left/Right hand position: Global desired Cartesian coordinates.
+\item Left/Right hand orientation: Three local desired euler angles.
+\item Torso orientation: Three local desired euler angles.
+\item Pelvis orientation: Three local desired euler angles.
+\item Center of Mass: Desired computed center of mass. Helps brings the robot back to a stable position.
+\item Left/Right foot position: Global desired Cartesian coordinates.
+\end{enumerate}
+
+The challenge of the system is to provide the correct weights for each the competing jacobians such that the robot is able to perform the desired motions while keeping balance, and smooth motions. For example, one might decrease the weight of the center of mass, thus allowing the arms to reach farther out, but at the same time it would allow the robot to more easily enter undesired configurations that might cause it to fall over.
+
+This system provides a know problem of singularities, in which when either a knee joint, or an elbow joint are straight in comparison to it's neighbouring links, the algorithm is unable to unlock them from their current state. The current solution is to simply prevent the joints to reach the singularities, simply by decreasing the joint limits. 
+
+We perform a trick, we define the robot as skeleton starting from the pelvis, but when we generate Jacobians to move the end effector of each limbs, we also give it the ability to move the pelvis on a global coordinate frame. The hand jacobians has no direct effect on the the leg joints, but indirectly moves the imaginary point that the pelvis should follow, and the legs move with it. 
+
+Usually there are about 36 active jacobians, there may be more or less depending on the required constraints, such as disabling a hand constraint, or enabling a desired elbow position constraint. The next procedure is an algorithm that is able to intake all the competing needs, and output the desired joint velocities. 
+
+The controller uses a system of calculating a psedu-inverse, and finding a least squares solution by using quadratic programming. We first generate a matrix, $A$, of 34 columns and about 68 rows, and a vector, $b$, with the same name of rows. The matrix is composed of all the jacobians plus an additional regularization identity element that helps none of the joints move too quickly. 
+
+\begin{equation} 
+Ax = b 
+\end{equation}
+\begin{equation} 
+\begin{bmatrix}
+J_{Feet} &\cdot & W_{feet} \\
+J_{Hand} &\cdot & W_{hand} \\
+J_{Torso} &\cdot & W_{torso} \\
+J_{Pelvis} &\cdot & W_{pelvis} \\
+J_{CoM} &\cdot & W_{CoM} \\
+I &\cdot & W_{regularization}
+\end{bmatrix}
+x = 
+\begin{bmatrix}
+(Feet_d - Feet_a) &\cdot & {Rate}_{Feet} \\
+(Hand_d - Hand_a) &\cdot & {Rate}_{Hand} \\
+(Torso_d - Torso_a) &\cdot & {Rate}_{Torso} \\
+(Pelvis_d - Pelvis_a) &\cdot & {Pelvis}_{Pelvis} \\
+(CoM_d - CoM_a) &\cdot & {Rate}_{CoM} \\
+0
+\end{bmatrix}
+\end{equation}
+
+We then attempt to solve: 
+\begin{equation} 
+x = (A^tA)^{-1} + A^tb
+
+\end{equation}
+
 
 \subsection{Inverse Dynamics}
 
