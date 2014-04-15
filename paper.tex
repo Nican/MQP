@@ -282,6 +282,7 @@ k_{f_p} &\cdot ( f_d - f ) &+\\
 {ff}_{f_d} &\cdot f_d &+ {ff}_{const}
 \end{align*}
 
+(TODO: Show plot about setting the position control too high or too low.)
 
 \subsection{Robotiq Hand}
 
@@ -294,20 +295,33 @@ The software developed my WPI and CMU are mostly written in C++, with small part
 
 \subsection{Architecture}
 
-The controller has three main aspects: 
+The system was setup in three major components: 
 
-\subsubsection{Motion controller}
-The motion controller is responsible for controlling the joints of the robot. 
+\subsubsection{Atlas}
+The programming of the Atlas robot is inaccessible by the team, and can only be communicated by an C++ API provided by Boston Dynamics. The API simple works by connecting through the robot through an IP address, and queuing the packets received from the robot, and sending back responses. 
 
-Most of the math executed is done with the help with Eigen, a C++ template library for linear algebra. 
+\subsubsection{Field Computer}
+The Field Computer is designed to handle the team programmed controller logic of the robot, either being a full body controller, or using the predefined behaviors given by Boston Dynamics. 
 
+If the Field Computer fails to send a new command to the robot within 0.2 milliseconds, the robot will automatically shutdown. 
 
-\subsubsection{Vision}
+Also responsible for sending and receiving high level commands from the Operational Command Unit.
 
-\subsubsection{High-level controller}
+\subsubsection{Operational Command Unit (OCU)}
 
+There can be more than one OCU on a team, and it is the interface to which the operator has to evaluate the robot situation, and perform the desired tasks. 
+
+%\subsubsection{Motion controller}
+%The motion controller is responsible for controlling the joints of the robot. 
+
+%Most of the math executed is done with the help with Eigen, a C++ template library for linear algebra. 
 
 \subsection{Network}
+
+DARPA structured a predictable, but limited bandwidth communication between the field computer and the OCU. The network quality varied every 60 seconds between a $1000 \frac{kb}{s}$ with a $100ms$ round trip delay, and a $100 \frac{kb}{s}$ with a $500ms$ round trip delay. This setup is to incentivize the teams to make the robot perform more autonomous tasks.
+
+The challenge used a Mini Maxwell \cite{minimaxwell}, a network emulation system, to enforce the bandwidth limitations. The exact configurations of the Maxwell was never revealed, but whenever the bandwidth limitations was surpassed, packets seemed to be LIFO queued, sometimes causing images from the video stream to come out of order. 
+
 \subsection{ROS}
 
 \section{Full-body controller}
@@ -338,7 +352,7 @@ We perform a trick, we define the robot as skeleton starting from the pelvis, bu
 
 Usually there are about 36 active jacobians, there may be more or less depending on the required constraints, such as disabling a hand constraint, or enabling a desired elbow position constraint. The next procedure is an algorithm that is able to intake all the competing needs, and output the desired joint velocities. 
 
-The controller uses a system of calculating a psedu-inverse, and finding a least squares solution by using quadratic programming. We first generate a matrix, $A$, of 34 columns and about 68 rows, and a vector, $b$, with the same name of rows. The matrix is composed of all the jacobians plus an additional regularization identity element that helps none of the joints move too quickly. 
+The controller uses a system of calculating a psedu-inverse, and finding a least squares solution by using quadratic programming. We first generate a matrix, $A$, of 34 columns and about 68 rows, and a vector, $b$, with the same name of rows. The matrix is composed of all the jacobians multiplies by an weight, that must be equal to the desired change. An additional regularization identity element is added to help ensure that none of the joints move too quickly. 
 
 \begin{equation} 
 Ax = b 
@@ -405,20 +419,34 @@ The
 \subsection{Future Work}
 
 \section{DRC Valve}
+For this task the robot must close three industrial valves during a period of 30 minutes. Those consist of a 13" ball valve, and two gate valves with turning wheels of 9" and 18". The ball valve has to be closed 90 degrees clockwise ( until the lever is horizontal). The gate valves have to be rotated clockwise a full turn to be considered closed.  \cite{valvetask}
 \subsection{Approach}
 \subsection{Results}
 \subsection{Conclusion and Future Work}
 
 \section{DRC Wall}
+\begin{wrapfigure}{r}{0.3\textwidth}
+  \begin{center}
+    \includegraphics[scale=0.5]{images/drilling2.png}
+  \end{center}
+  \caption{The front camera vision of drilling the wall}
+\end{wrapfigure}
+For the Wall task the robot must use a single handed cordless rotary tool with an on/off switch to cut and remove a prescribed triangular shaped piece from a wall. The wall material will be 0.5 inch thick drywall. The three vertices of the right triangle will be 6 inches diameter circles. The edges connecting the vertices will be 6 inches wide. The vertical edge will be 12 inches long, and the horizontal edge will be 24 inches long. The bottom of the triangle will be 36 inches above the ground. \cite{walltask}
 \subsection{Approach}
 \subsection{Results}
 \subsection{Conclusion and Future Work}
 
 \section{Conclusion}
 
+\section{Future Work}
+
+\begin{itemize}
+\item Putting the controller on a decided processor. http://stackoverflow.com/a/13585364/99966 
+\item Look at the difference between the IMU sensor data, and the SD/Fast controller. Possibilities about detecting, or preventing, falls. 
+\end{itemize}
+
 \section{Acknowledgment}
-
-
+(TODO: Special thanks to NVIDIA) 
 
 
 %write your main text here
