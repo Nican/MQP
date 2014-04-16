@@ -218,7 +218,18 @@ The challenge used a Mini Maxwell \cite{minimaxwell}, a network emulation system
 
 \section{Full-body controller}
 % further discuss the need fo a full-body controller,
-Intro...Carnegie Mellon University developed custom software for controlling the robot, which involves two major aspects that are solve using Quadratic programming, an Inverse Kinematics solver, and an Inverse Dynamics solver. 
+Carnegie Mellon University developed custom software for simultaneously controlling all joints of the robot, instead of using one of the predefined the motions given by Boston Dynamics. The CMU controler contains three major aspects, an Inverse Kinematics, an Inverse Dynamics, and a high-level controller. 
+
+Both Inverse Kinematics and Inverse Dynamics depends on two external libraries, SD/FAST and QuadProg++. 
+
+\subsection{SD/FAST}
+The library SD/Fast provides physically-based simulation of mechanical systems by taking a short description of an articulated system of rigid bodies and deriving the full nonlinear equations of the system. \cite{sdfast} The library takes several key factors about each sub-body in the robot, such as the link positions, mass, and inertia. The library than generates a C file that provides informations such as the center of mass, jacobians, and positions. 
+
+\subsection{QuadProg++}
+QuadProg++[http://quadprog.sourceforge.net/] is a quadratic programming solver. The algorithm implements the Goldfarb-Idnani active-set dual method. At present it is limited to the solution of strictly convex quadratic programs. \cite{quadprog}
+
+The library has been rewritten using the Eigen datatypes, to utilize vectorization, and be easier to work with the rest of the code base. 
+
 
 % Intro to all the following sections ( basically a summary)
 % IK ID QP
@@ -229,14 +240,11 @@ Intro...Carnegie Mellon University developed custom software for controlling the
 % Algorithms can therefore optimize for certain criteria
 % Our approach uses QP with Jacobian stacking
 
-Inverse kinematics is the process of given an desired end effector position, generate a joint state solution for that goal. There exists a great deal of research, and libraries that provide fast and concise solutions, but most of the research assumes that the base of the joint system is stationary, such as one that you might find on industrial manipulators. 
+Inverse kinematics is the process of given an desired effector positions, generate a joint state solution for the goal. There exists a great deal of research, and libraries that provide fast and concise solutions, but most of the research assumes that the base of the joint system is stationary, such as one that you might find on industrial manipulators. 
 
-Atlas is a bipedal robot, it is not simple to define a set of rules that describes all possible motions. 
+Atlas is a bipedal robot, it is not simple to define a set of rules that describes all possible motions. Besides taking measure on the desired state, the kinematics also have account for the center of mass.
 
-Therefore most research in this field does not take into account stability of the robot. Which is a priority in the case of a bipedal robot such as Atlas.
-
-
-The library SD/Fast provides physically-based simulation of mechanical systems by taking a short description of an articulated system of rigid bodies and deriving the full nonlinear equations of the system. \cite{sdfast} The library takes several key factors about each sub-body in the robot, such as the link positions, mass, and inertia. The library than generates a C file that provides informations such as the center of mass, jacobians, and positions. 
+The robot is defined as tree/skeleton starting from the pelvis, defining the weight and distances between each joint. When we generate Jacobians to move the end effector of each limbs, we also give it the ability to move the pelvis on a global coordinate frame. The hand jacobians has no direct effect on the the leg joints, but indirectly moves the imaginary point that the pelvis should follow, and the legs move with it. 
 
 During this current iteration we have the following competing Jacobians that control the robot: 
 \begin{enumerate}
@@ -248,11 +256,9 @@ During this current iteration we have the following competing Jacobians that con
 \item Left/Right foot position: Global desired Cartesian coordinates.
 \end{enumerate}
 
-The challenge of the system is to provide the correct weights for each the competing Jacobians such that the robot is able to perform the desired motions while keeping balance, and smooth motions. For example, one might decrease the weight of the center of mass, thus allowing the arms to reach farther out, but at the same time it would allow the robot to more easily enter undesired configurations that might cause it to fall over.
+The challenge of the system is to provide the correct weights for each the competing Jacobians such that the robot is able to perform the desired motions while keeping balance, and smooth motions. For example, one might decrease the weight of the center of mass, thus allowing the arms to reach farther out, but at the same time it would allow the robot to more easily enter undesired configurations that might cause a fall.
 
 This system provides a know problem of singularities, in which when either a knee joint, or an elbow joint are straight in comparison to it's neighbouring links, the algorithm is unable to unlock them from their current state. The current solution is to simply prevent the joints to reach the singularities, simply by decreasing the joint limits. 
-
-We perform a trick, we define the robot as skeleton starting from the pelvis, but when we generate Jacobians to move the end effector of each limbs, we also give it the ability to move the pelvis on a global coordinate frame. The hand jacobians has no direct effect on the the leg joints, but indirectly moves the imaginary point that the pelvis should follow, and the legs move with it. 
 
 Usually there are about 36 active jacobians, there may be more or less depending on the required constraints, such as disabling a hand constraint, or enabling a desired elbow position constraint. The next procedure is an algorithm that is able to intake all the competing needs, and output the desired joint velocities. 
 
@@ -303,16 +309,17 @@ Joint_{Max} - {Joint}_{Actual}
 \end{bmatrix}
 \end{equation}
 
-QuadProg++ can now solve the problem, but there exists situations in which a solution is infeasible. 
+QuadProg++ can now solve the problem, but there exists rare situations in which a solution is infeasible. 
 
-We now simply add the values of $x$ into the current joint state of the robot, check again for any joints being out of bounds, 
-
+We now simply add the values of $x$ into the current joint state of the robot, check again for any joints being out of bounds, and send the new desired joint position and velocities for the Inverse Dynamics.
 
 \subsection{Inverse Dynamics}
 
+
+
 \subsection{Quadratic Programming}
 
-The gradratic programming is solved using a re-written version of QuadProg++[http://quadprog.sourceforge.net/], but adapted to use Eigen. The algorithm implements the Goldfarb-Idnani active-set dual method. At present it is limited to the solution of strictly convex quadratic programs. \cite{quadprog}
+
 
 The 
 
