@@ -44,6 +44,304 @@
 % this was the preamble, now comes the main text
 \begin{document}
 
+
+%%%% TODO: OVERALL INTRO %%%%
+% Discuss the problem
+% Section 1 talks about..sections 2, etc...
+
+\section{Introduction}
+
+In this paper we discuss the Worcester Polytechnic Institute and a team at Carnegie Mellon University use the Boston Dynamics Atlas robot at the DARPA Robotics Challenge (DRC). Initially we will discuss about the tasks involved in the challenge, and the hardware specifications and limitations. We will then progress to the software architecture and the mathematics behind the controller. 
+
+\section{DARPA Robotics Challenge}
+%\paragraph{The objective of this paper is to help the reader understand the current workings of the Carnegie Mellon’s University’s controller.}  
+ 
+The DARPA Robotics Challenge (DRC) is a competition of teams developing robots capable of assisting humans in responding to natural and man-made disasters. The goal of the DRC is to design a robust robotic system that has mobility and dexterity in disaster zones, the ability to use tools designed for humans, and supervised autonomy.
+ 
+Teams are spread in several tracks. Worcester Polytechnic Institute is in the Track C team, in which competed in the Virtual Challenge (DVC), and received funding for the Atlas robot.  
+
+\section{Hardware}
+\subsection{Atlas}
+
+As described by the Atlas Robot Operation and Maintenance Manual, "The Atlas robot’s on-board features include a real time computer, a hydraulic power pack, force/torque sensors, inertial sensing, and active thermal management. In addition to the integrated sensors, the Atlas robot comes equipped with the MultiSense-SL sensor head from Carnegie Robotics, and modular wrists"		
+
+WARNER is 6 foot 2 inches tall and weighs approximately 330 pounds. The movement is powered by 28 hydraulically-actuated rotation joints, with a closed-loop position and force control. 
+
+\subsection{Sensors}
+
+For external sensors Atlas has:
+
+\subsubsection{Carnegie Robotics Sensor Head}
+\begin{wrapfigure}{r}{0.25\textwidth}
+  \begin{center}
+    \includegraphics[scale=0.25]{images/sensorhead.jpg}
+  \end{center}
+  \caption{Multisense SL}
+\end{wrapfigure}
+
+
+The MultiSense SL is a tri-modal range sensor, priving laser range data, stereo range data, and video output stream. The device provides the majority of perceptual data used for teleoperation as well as automated control. 
+
+The apparatus brings together a Hokuyo UTM-30LX-EW laser, which output 43,000 points per second, and a Carnegie Robotics MultiSense S7 high resolution stereo camera, with a 4 megapixels on each side.  On-board processing handles image rectification, stereo data processing, time synchronizing of laser data with a spindle encoder, spindle motor control, and lighting timing. \cite{multisense-sl}
+
+\subsubsection{Situational awareness cameras}
+
+Two Situational awareness cameras are placed just below the head of the robot, providing a wide range view of the workspace.
+
+\begin{figure}[ht]
+\begin{center}
+\begin{minipage}[b]{0.4\linewidth}
+\centering
+\includegraphics[width=\textwidth]{images/sitcamFOV.png}
+\caption{Top-down view of the robot, display range of view}
+\label{fig:figure1}
+\end{minipage}
+\hspace{0.5cm}
+\begin{minipage}[b]{0.4\linewidth}
+\centering
+\includegraphics[width=\textwidth]{images/fisheye.jpg}
+\caption{View of the camera}
+\label{fig:figure2}
+\end{minipage}
+\end{center}
+\end{figure}
+
+\pagebreak
+
+
+\subsubsection{Atlas Control Parameters}
+There exists several controller parameters that is hidden to the developer that controls the hydraulic joints. We let $q$, $qd$ and $f$ be the senses position, velocity, and torque respectively. And we let $q_d$, $qd_d$, and $f_d$ be the desired position, velocity, and torque for each joint.
+
+We create the following variables to help control the desired torque control:
+
+\begin{itemize}
+\item $k_{q_p}$: Position error gain, in $\frac{N \cdot m}{rad}$.
+\item $k_{q_i} $: Integral of position error gain, in $\frac{N \cdot m}{rad \cdot s}$.
+\item $k_{{qd}_p}$: Derivative error gain, in $\frac{N \cdot m}{\frac{rad}{s}}$.
+\item $k_{f_p}$: Proportional force feedback gain.
+\item ${ff}_{qd}$: Feedforward velocity gain.
+\item ${ff}_{{qd}_d}$: Feedforward desired velocity gain.
+\item ${ff}_{f_d}$: Feedforward desired force gain.
+\item ${ff}_{const}$: Constant force term.
+\end{itemize}
+
+And use them accordingly: 
+\begin{align*}
+k_{q_p} &\cdot ( q_d - q ) &+\\
+k_{q_i} &\cdot 1/s * ( q_d - q ) &+\\
+k_{{qd}_p} &\cdot ( {qd}_d - qd ) &+\\
+k_{f_p} &\cdot ( f_d - f ) &+\\
+{ff}_{qd} &\cdot qd &+\\
+{ff}_{{qd}_d} &\cdot qd_d &+\\
+{ff}_{f_d} &\cdot f_d &+ {ff}_{const}
+\end{align*}
+
+(TODO: Show plot about setting the position control too high or too low.)
+
+\subsection{Robotiq Hand}
+
+The robot gives the option of interchanging the hands, the two primary options being the iRobot© hands, and the Sandia© hands. While both options are known companies in the industry, neither provided the power, nor robustness necessary to complete the industrial tasks. These hands were designed to perform precision tasks, such as picking up a coin, or a fist-sized rock, but not to pick up a power tool. The team went to an alternative in using hardware developed Robotiq©, a 3-Finger adaptive robot gripper, which provided a much stronger grip. 
+
+
+
+\section{Software}
+The software developed my WPI and CMU are mostly written in C++, with small parts written in Python. 
+
+\subsection{DBI Behaviors}
+Boston Dynamics provided predefined behaviour for Atlas, each of these controllers can be activated from state to another state. 
+
+\subsubsection{Manipulate}
+\begin{wrapfigure}{r}{0.3\textwidth}
+  \begin{center}
+    \includegraphics[scale=0.5]{images/align_to_wall.png}
+  \end{center}
+  \caption{Rviz within ROS}
+\end{wrapfigure}
+The Manipulation mode, in which the user can control all the joints above the torso, and basic control of the pelvis orientation, and the pelvis height. The legs are controlled by the Boston Dynamics controller embedded in the firmware.
+
+It is fairly easy to use, and has a wide range of motion if the pelvis position and orientation is controlled together with an inverse kinematics solver for the joints, but can be unpredictable. The robot has the problem that the back joint that helps torso move back and forth is not strong enough to hold, and may give out a times, causing the whole top part of the robot fall forward, or at times, make the entire robot fall forward. 
+
+The user has the option to input any additional weight that the hand is carrying to help the controller.
+
+%%%% MOVE OUT OF HARDWARE%%%%%
+MoveIt! is a software developed with ROS to help robot developers control the robot. It contains a inverse kinematics solver that can interface with Atlas, but prevents two containing limitations: 
+\begin{inparaenum}[\itshape a\upshape)]
+\item The inverse kinematics solver has no option to give approximate solutions, and will fail to give joint state values unless a very approximate solution for a desired hand position exists.
+\item It does not account for modifying the pelvis position and orientation for solving for a solution. \end{inparaenum}
+ 
+\subsubsection{Walk}
+
+\begin{wrapfigure}{r}{0.3\textwidth}
+  \begin{center}
+    \includegraphics[scale=0.5]{images/step_gui.png}
+  \end{center}
+  \caption{The planned steps for the robot walking forward and to the left}
+\end{wrapfigure}
+
+
+Boston Dynamics walking behaviour works by the user providing a sequence of steps paramters, which include the step duration, sway duration, swing height, lift height, and step end distance.  
+
+The WPI team developed an additional interface for Rviz, such as the robot driver is able to specify a final desired feet positions for the robot, and the software produces all the intermediate steps. It took some trial-and-error testing to figure out what the maximum step size are possible, and the program does not account for any debris on the floor. 
+
+Although it could be automated, it is also usually required for the driver to additionally modify the final two steps such that they are further apart, thus providing a stronger base for the walking. 
+
+\subsection{Architecture}
+
+The system was setup in three major components: 
+
+\subsubsection{Atlas}
+The programming of the Atlas robot is inaccessible by the team, and can only be communicated by an C++ API provided by Boston Dynamics. The API simple works by connecting through the robot through an IP address, and queuing the packets received from the robot, and sending back responses. 
+
+\subsubsection{Field Computer}
+The Field Computer is designed to handle the team programmed controller logic of the robot, either being a full body controller, or using the predefined behaviors given by Boston Dynamics. 
+
+If the Field Computer fails to send a new command to the robot within 0.2 milliseconds, the robot will automatically shutdown. 
+
+Also responsible for sending and receiving high level commands from the Operational Command Unit.
+
+\subsubsection{Operational Command Unit (OCU)}
+
+There can be more than one OCU on a team, and it is the interface to which the operator has to evaluate the robot situation, and perform the desired tasks. 
+
+%\subsubsection{Motion controller}
+%The motion controller is responsible for controlling the joints of the robot. 
+
+%Most of the math executed is done with the help with Eigen, a C++ template library for linear algebra. 
+
+\subsection{Network}
+
+DARPA structured a predictable, but limited bandwidth communication between the field computer and the OCU. The network quality varied every 60 seconds between a $1000 \frac{kb}{s}$ with a $100ms$ round trip delay, and a $100 \frac{kb}{s}$ with a $500ms$ round trip delay. This setup is to incentivize the teams to make the robot perform more autonomous tasks.
+
+The challenge used a Mini Maxwell \cite{minimaxwell}, a network emulation system, to enforce the bandwidth limitations. The exact configurations of the Maxwell was never revealed, but whenever the bandwidth limitations was surpassed, packets seemed to be LIFO queued, sometimes causing images from the video stream to come out of order. 
+
+\subsection{ROS}
+
+\section{Full-body controller}
+% further discuss the need fo a full-body controller,
+Intro...Carnegie Mellon University developed custom software for controlling the robot, which involves two major aspects that are solve using Quadratic programming, an Inverse Kinematics solver, and an Inverse Dynamics solver. 
+
+% Intro to all the following sections ( basically a summary)
+% IK ID QP
+
+\subsection{Inverse Kinematics}
+
+% Discuss why there are infinite solutions
+% Algorithms can therefore optimize for certain criteria
+% Our approach uses QP with Jacobian stacking
+
+Inverse kinematics is the process of given an desired end effector position, generate a joint state solution for that goal. There exists a great deal of research, and libraries that provide fast and concise solutions, but most of the research assumes that the base of the joint system is stationary, such as one that you might find on industrial manipulators. 
+
+Atlas is a bipedal robot, it is not simple to define a set of rules that describes all possible motions. 
+
+Therefore most research in this field does not take into account stability of the robot. Which is a priority in the case of a bipedal robot such as Atlas.
+
+
+The library SD/Fast provides physically-based simulation of mechanical systems by taking a short description of an articulated system of rigid bodies and deriving the full nonlinear equations of the system. \cite{sdfast} The library takes several key factors about each sub-body in the robot, such as the link positions, mass, and inertia. The library than generates a C file that provides informations such as the center of mass, jacobians, and positions. 
+
+During this current iteration we have the following competing Jacobians that control the robot: 
+\begin{enumerate}
+\item Left/Right hand position: Global desired Cartesian coordinates.
+\item Left/Right hand orientation: Three local desired euler angles.
+\item Torso orientation: Three local desired euler angles.
+\item Pelvis orientation: Three local desired euler angles.
+\item Center of Mass: Desired computed center of mass. Helps brings the robot back to a stable position.
+\item Left/Right foot position: Global desired Cartesian coordinates.
+\end{enumerate}
+
+The challenge of the system is to provide the correct weights for each the competing Jacobians such that the robot is able to perform the desired motions while keeping balance, and smooth motions. For example, one might decrease the weight of the center of mass, thus allowing the arms to reach farther out, but at the same time it would allow the robot to more easily enter undesired configurations that might cause it to fall over.
+
+This system provides a know problem of singularities, in which when either a knee joint, or an elbow joint are straight in comparison to it's neighbouring links, the algorithm is unable to unlock them from their current state. The current solution is to simply prevent the joints to reach the singularities, simply by decreasing the joint limits. 
+
+We perform a trick, we define the robot as skeleton starting from the pelvis, but when we generate Jacobians to move the end effector of each limbs, we also give it the ability to move the pelvis on a global coordinate frame. The hand jacobians has no direct effect on the the leg joints, but indirectly moves the imaginary point that the pelvis should follow, and the legs move with it. 
+
+Usually there are about 36 active jacobians, there may be more or less depending on the required constraints, such as disabling a hand constraint, or enabling a desired elbow position constraint. The next procedure is an algorithm that is able to intake all the competing needs, and output the desired joint velocities. 
+
+The controller uses a system of calculating a psedu-inverse, and finding a least squares solution by using quadratic programming. We first generate a matrix, $A$, of 34 columns and about 68 rows, and a vector, $b$, with the same name of rows. The matrix is composed of all the jacobians multiplies by an weight, that must be equal to the desired change. An additional regularization identity element is added to help ensure that none of the joints move too quickly. 
+
+\begin{equation} 
+Ax = b 
+\end{equation}
+\begin{equation} 
+\begin{bmatrix}
+J_{Feet} &\cdot & W_{feet} \\
+J_{Hand} &\cdot & W_{hand} \\
+J_{Torso} &\cdot & W_{torso} \\
+J_{Pelvis} &\cdot & W_{pelvis} \\
+J_{CoM} &\cdot & W_{CoM} \\
+I &\cdot & W_{regularization}
+\end{bmatrix}
+x = 
+\begin{bmatrix}
+(Feet_d - Feet_a) &\cdot & {Rate}_{Feet} &\cdot & W_{feet} \\
+(Hand_d - Hand_a) &\cdot & {Rate}_{Hand} &\cdot & W_{hand} \\
+(Torso_d - Torso_a) &\cdot & {Rate}_{Torso} &\cdot & W_{torso} \\
+(Pelvis_d - Pelvis_a) &\cdot & {Rate}_{Pelvis} &\cdot & W_{pelvis} \\
+(CoM_d - CoM_a) &\cdot & {Rate}_{CoM} &\cdot & W_{CoM} \\
+0
+\end{bmatrix}
+\end{equation}
+
+We let $Q=A^tA$ and $c=A^tb$, and now we attempt to minimize for $x$:  
+\begin{equation} 
+f(x) = \frac{1}{2}x^tQx + c^tx 
+\end{equation}
+With a joint limit inequality constraints, which prevents the solver, in a single time step, to set the joint values higher than the physical joint limits:
+\begin{equation} 
+Wx<b
+\end{equation}
+
+\begin{equation} 
+\begin{bmatrix}
+I &\cdot & timeStep \\
+-I &\cdot & timeStep 
+\end{bmatrix}
+x
+< 
+\begin{bmatrix}
+-Joint_{Min} + {Joint}_{Actual} \\
+Joint_{Max} - {Joint}_{Actual}
+\end{bmatrix}
+\end{equation}
+
+QuadProg++ can now solve the problem, but there exists situations in which a solution is infeasible. 
+
+We now simply add the values of $x$ into the current joint state of the robot, check again for any joints being out of bounds, 
+
+
+\subsection{Inverse Dynamics}
+
+\subsection{Quadratic Programming}
+
+The gradratic programming is solved using a re-written version of QuadProg++[http://quadprog.sourceforge.net/], but adapted to use Eigen. The algorithm implements the Goldfarb-Idnani active-set dual method. At present it is limited to the solution of strictly convex quadratic programs. \cite{quadprog}
+
+The 
+
+\subsection{Results}
+
+\subsection{Conclusion}
+
+\subsection{Future Work}
+
+\section{DRC Valve}
+For this task the robot must close three industrial valves during a period of 30 minutes. Those consist of a 13" ball valve, and two gate valves with turning wheels of 9" and 18". The ball valve has to be closed 90 degrees clockwise ( until the lever is horizontal). The gate valves have to be rotated clockwise a full turn to be considered closed.  \cite{valvetask}
+\subsection{Approach}
+\subsection{Results}
+\subsection{Conclusion and Future Work}
+
+\section{DRC Wall}
+\begin{wrapfigure}{r}{0.3\textwidth}
+  \begin{center}
+    \includegraphics[scale=0.5]{images/drilling2.png}
+  \end{center}
+  \caption{The front camera vision of drilling the wall}
+\end{wrapfigure}
+For the Wall task the robot must use a single handed cordless rotary tool with an on/off switch to cut and remove a prescribed triangular shaped piece from a wall. The wall material will be 0.5 inch thick drywall. The three vertices of the right triangle will be 6 inches diameter circles. The edges connecting the vertices will be 6 inches wide. The vertical edge will be 12 inches long, and the horizontal edge will be 24 inches long. The bottom of the triangle will be 36 inches above the ground. \cite{walltask}
+\subsection{Approach}
+\subsection{Results}
+\subsection{Conclusion and Future Work}
+
+\section{Conclusion}
+
 \section{Robust Dynamic Programming}
 Model based optimal control is a powerful tool but relies heavily on the accuracy of the system model, which is not a trivial task to derive. There are many parameters involved, such as friction, sensor readings, calibrations, and the model may change over time due to wear, temperature, humidity, contact condition, and others.
 
@@ -203,240 +501,6 @@ The main drive for GPU development was for computer graphics, but using some tec
 For example, OpenGL could be used to perform the multiplication of two 256 by 256 matrices. In this case, three texture buffers would be created inside of the GPU, each of the size of the matrix, and two of them would be loaded with the read-only input matrices values from the main computer memory, while the other one would be used as a render texture. When the fragment shader runs over all the pixels of the render texture, the user defined program would read the necessary values from the other two matrices and render the corresponding output value. 
 
 Later during 2007, NVIDIA released CUDA, a general purpose computing standard that would allow developers to create GPU based software, and later on 2008, the open source community followed with OpenCL. While OpenCL and CUDA follows the same principles as fragment shaders, it also opened doors for other applications, such as atomic operations, thread syncing, memory barriers, and others.
-
-\pagebreak
-
-\section{DARPA Robotics Challenge}
-\paragraph{The objective of this paper is to help the reader understand the current workings of the Carnegie Mellon’s University’s controller.}  
- 
-The DARPA Robotics Challenge (DRC) is a competition of teams developing robots capable of assisting humans in responding to natural and man-made disasters.   
- 
-Teams are spread in several tracks. WPI is in the Track C team, in which competed in the Virtual Challenge (DVC), and received funding for the Atlas robot.  
-
-\section{Hardware}
-\subsection{Atlas}
-
-The Atlas robot is a powerful robot in the form of an adult human. It is powered by 28 hydraulically-actuated rotation joints, with a closed-loop position and force control. It also contains a real time control computer (What is the specs?). Currently powered by external electricity, and packed with a head-mounted sensor package with LIDAR and stereo cameras. 
-
-\subsection{DBI Behaviors}
-Boston Dynamics provided predefined behaviour for Atlas, each of these controllers can be activated from state to another state. 
-
-\subsubsection{Manipulate}
-\begin{wrapfigure}{r}{0.3\textwidth}
-  \begin{center}
-    \includegraphics[scale=0.5]{images/align_to_wall.png}
-  \end{center}
-  \caption{Rviz within ROS}
-\end{wrapfigure}
-The Manipulation mode, in which the user can control all the joints above the torso, and basic control of the pelvis orientation, and the pelvis height. The legs are controlled by the Boston Dynamics controller embedded in the firmware.
-
-It is fairly easy to use, and has a wide range of motion if the pelvis position and orientation is controlled together with an inverse kinematics solver for the joints, but can be unpredictable. The robot has the problem that the back joint that helps torso move back and forth is not strong enough to hold, and may give out a times, causing the whole top part of the robot fall forward, or at times, make the entire robot fall forward. 
-
-The user has the option to input any additional weight that the hand is carrying to help the controller.
-
-MoveIt! is a software developed with ROS to help robot developers control the robot. It contains a inverse kinematics solver that can interface with Atlas, but prevents two containing limitations: 
-\begin{inparaenum}[\itshape a\upshape)]
-\item The inverse kinematics solver has no option to give approximate solutions, and will fail to give joint state values unless a very approximate solution for a desired hand position exists.
-\item It does not account for modifying the pelvis position and orientation for solving for a solution. \end{inparaenum}
- 
-\subsubsection{Walk}
-
-\begin{wrapfigure}{r}{0.3\textwidth}
-  \begin{center}
-    \includegraphics[scale=0.5]{images/step_gui.png}
-  \end{center}
-  \caption{The planned steps for the robot walking forward and to the left}
-\end{wrapfigure}
-
-
-Boston Dynamics walking behaviour works by the user providing a sequence of steps paramters, which include the step duration, sway duration, swing height, lift height, and step end distance.  
-
-The WPI team developed an additional interface for Rviz, such as the robot driver is able to specify a final desired feet positions for the robot, and the software produces all the intermediate steps. It took some trial-and-error testing to figure out what the maximum step size are possible, and the program does not account for any debris on the floor. 
-
-Although it could be automated, it is also usually required for the driver to additionally modify the final two steps such that they are further apart, thus providing a stronger base for the walking. 
-
-\subsubsection{Atlas Control Parameters}
-There exists several controller parameters that is hidden to the developer that controls the hydraulic joints. We let $q$, $qd$ and $f$ be the senses position, velocity, and torque respectively. And we let $q_d$, $qd_d$, and $f_d$ be the desired position, velocity, and torque for each joint.
-
-We create the following variables to help control the desired torque control:
-
-\begin{itemize}
-\item $k_{q_p}$: Position error gain, in $\frac{N \cdot m}{rad}$.
-\item $k_{q_i} $: Integral of position error gain, in $\frac{N \cdot m}{rad \cdot s}$.
-\item $k_{{qd}_p}$: Derivative error gain, in $\frac{N \cdot m}{\frac{rad}{s}}$.
-\item $k_{f_p}$: Proportional force feedback gain.
-\item ${ff}_{qd}$: Feedforward velocity gain.
-\item ${ff}_{{qd}_d}$: Feedforward desired velocity gain.
-\item ${ff}_{f_d}$: Feedforward desired force gain.
-\item ${ff}_{const}$: Constant force term.
-\end{itemize}
-
-And use them accordingly: 
-\begin{align*}
-k_{q_p} &\cdot ( q_d - q ) &+\\
-k_{q_i} &\cdot 1/s * ( q_d - q ) &+\\
-k_{{qd}_p} &\cdot ( {qd}_d - qd ) &+\\
-k_{f_p} &\cdot ( f_d - f ) &+\\
-{ff}_{qd} &\cdot qd &+\\
-{ff}_{{qd}_d} &\cdot qd_d &+\\
-{ff}_{f_d} &\cdot f_d &+ {ff}_{const}
-\end{align*}
-
-(TODO: Show plot about setting the position control too high or too low.)
-
-\subsection{Robotiq Hand}
-
-The robot gives the option of interchanging the hands, the two primary options being the iRobot© hands, and the Sandia© hands. While both options are known companies in the industry, neither provided the power, nor robustness necessary to complete the industrial tasks. These hands were designed to perform precision tasks, such as picking up a coin, or a fist-sized rock, but not to pick up a power tool. The team went to an alternative in using hardware developed Robotiq©, a 3-Finger adaptive robot gripper, which provided a much stronger grip. 
-
-
-
-\section{Software}
-The software developed my WPI and CMU are mostly written in C++, with small parts written in Python. 
-
-\subsection{Architecture}
-
-The system was setup in three major components: 
-
-\subsubsection{Atlas}
-The programming of the Atlas robot is inaccessible by the team, and can only be communicated by an C++ API provided by Boston Dynamics. The API simple works by connecting through the robot through an IP address, and queuing the packets received from the robot, and sending back responses. 
-
-\subsubsection{Field Computer}
-The Field Computer is designed to handle the team programmed controller logic of the robot, either being a full body controller, or using the predefined behaviors given by Boston Dynamics. 
-
-If the Field Computer fails to send a new command to the robot within 0.2 milliseconds, the robot will automatically shutdown. 
-
-Also responsible for sending and receiving high level commands from the Operational Command Unit.
-
-\subsubsection{Operational Command Unit (OCU)}
-
-There can be more than one OCU on a team, and it is the interface to which the operator has to evaluate the robot situation, and perform the desired tasks. 
-
-%\subsubsection{Motion controller}
-%The motion controller is responsible for controlling the joints of the robot. 
-
-%Most of the math executed is done with the help with Eigen, a C++ template library for linear algebra. 
-
-\subsection{Network}
-
-DARPA structured a predictable, but limited bandwidth communication between the field computer and the OCU. The network quality varied every 60 seconds between a $1000 \frac{kb}{s}$ with a $100ms$ round trip delay, and a $100 \frac{kb}{s}$ with a $500ms$ round trip delay. This setup is to incentivize the teams to make the robot perform more autonomous tasks.
-
-The challenge used a Mini Maxwell \cite{minimaxwell}, a network emulation system, to enforce the bandwidth limitations. The exact configurations of the Maxwell was never revealed, but whenever the bandwidth limitations was surpassed, packets seemed to be LIFO queued, sometimes causing images from the video stream to come out of order. 
-
-\subsection{ROS}
-
-\section{Full-body controller}
-Intro...Carnegie Mellon University developed custom software for controlling the robot, which involves two major aspects that are solve using Quadratic programming, an Inverse Kinematics solver, and an Inverse Dynamics solver. 
-
-\subsection{Inverse Kinematics}
-Inverse kinematics is the process of given an desired end effector position, generate a joint state that will as close as possible achieve the goal. There exists a great deal of research, and libraries that provide fast and concise solutions, but most of the research assumes that the base of the joint system does not move, such as one that you might find on a factory. 
-
-Atlas is a bipedal robot, it is not simple to define a set of rules that describes all possible motions. 
-
-The library SD/Fast provides physically-based simulation of mechanical systems by taking a short description of an articulated system of rigid bodies and deriving the full nonlinear equations of the system. \cite{sdfast} The library takes several key factors about each sub-body in the robot, such as the link positions, mass, and inertia. The library than generates a C file that provides informations such as the center of mass, jacobians, and positions. 
-
-During this current iteration we have the following competing Jacobians that control the robot: 
-\begin{enumerate}
-\item Left/Right hand position: Global desired Cartesian coordinates.
-\item Left/Right hand orientation: Three local desired euler angles.
-\item Torso orientation: Three local desired euler angles.
-\item Pelvis orientation: Three local desired euler angles.
-\item Center of Mass: Desired computed center of mass. Helps brings the robot back to a stable position.
-\item Left/Right foot position: Global desired Cartesian coordinates.
-\end{enumerate}
-
-The challenge of the system is to provide the correct weights for each the competing jacobians such that the robot is able to perform the desired motions while keeping balance, and smooth motions. For example, one might decrease the weight of the center of mass, thus allowing the arms to reach farther out, but at the same time it would allow the robot to more easily enter undesired configurations that might cause it to fall over.
-
-This system provides a know problem of singularities, in which when either a knee joint, or an elbow joint are straight in comparison to it's neighbouring links, the algorithm is unable to unlock them from their current state. The current solution is to simply prevent the joints to reach the singularities, simply by decreasing the joint limits. 
-
-We perform a trick, we define the robot as skeleton starting from the pelvis, but when we generate Jacobians to move the end effector of each limbs, we also give it the ability to move the pelvis on a global coordinate frame. The hand jacobians has no direct effect on the the leg joints, but indirectly moves the imaginary point that the pelvis should follow, and the legs move with it. 
-
-Usually there are about 36 active jacobians, there may be more or less depending on the required constraints, such as disabling a hand constraint, or enabling a desired elbow position constraint. The next procedure is an algorithm that is able to intake all the competing needs, and output the desired joint velocities. 
-
-The controller uses a system of calculating a psedu-inverse, and finding a least squares solution by using quadratic programming. We first generate a matrix, $A$, of 34 columns and about 68 rows, and a vector, $b$, with the same name of rows. The matrix is composed of all the jacobians multiplies by an weight, that must be equal to the desired change. An additional regularization identity element is added to help ensure that none of the joints move too quickly. 
-
-\begin{equation} 
-Ax = b 
-\end{equation}
-\begin{equation} 
-\begin{bmatrix}
-J_{Feet} &\cdot & W_{feet} \\
-J_{Hand} &\cdot & W_{hand} \\
-J_{Torso} &\cdot & W_{torso} \\
-J_{Pelvis} &\cdot & W_{pelvis} \\
-J_{CoM} &\cdot & W_{CoM} \\
-I &\cdot & W_{regularization}
-\end{bmatrix}
-x = 
-\begin{bmatrix}
-(Feet_d - Feet_a) &\cdot & {Rate}_{Feet} &\cdot & W_{feet} \\
-(Hand_d - Hand_a) &\cdot & {Rate}_{Hand} &\cdot & W_{hand} \\
-(Torso_d - Torso_a) &\cdot & {Rate}_{Torso} &\cdot & W_{torso} \\
-(Pelvis_d - Pelvis_a) &\cdot & {Rate}_{Pelvis} &\cdot & W_{pelvis} \\
-(CoM_d - CoM_a) &\cdot & {Rate}_{CoM} &\cdot & W_{CoM} \\
-0
-\end{bmatrix}
-\end{equation}
-
-We let $Q=A^tA$ and $c=A^tb$, and now we attempt to minimize for $x$:  
-\begin{equation} 
-f(x) = \frac{1}{2}x^tQx + c^tx 
-\end{equation}
-With a joint limit inequality constraints, which prevents the solver, in a single time step, to set the joint values higher than the physical joint limits:
-\begin{equation} 
-Wx<b
-\end{equation}
-
-\begin{equation} 
-\begin{bmatrix}
-I &\cdot & timeStep \\
--I &\cdot & timeStep 
-\end{bmatrix}
-x
-< 
-\begin{bmatrix}
--Joint_{Min} + {Joint}_{Actual} \\
-Joint_{Max} - {Joint}_{Actual}
-\end{bmatrix}
-\end{equation}
-
-QuadProg++ can now solve the problem, but there exists situations in which a solution is infeasible. 
-
-We now simply add the values of $x$ into the current joint state of the robot, check again for any joints being out of bounds, 
-
-
-\subsection{Inverse Dynamics}
-
-\subsection{Quadratic Programming}
-
-The gradratic programming is solved using a re-written version of QuadProg++[http://quadprog.sourceforge.net/], but adapted to use Eigen. The algorithm implements the Goldfarb-Idnani active-set dual method. At present it is limited to the solution of strictly convex quadratic programs. \cite{quadprog}
-
-The 
-
-\subsection{Results}
-
-\subsection{Conclusion}
-
-\subsection{Future Work}
-
-\section{DRC Valve}
-For this task the robot must close three industrial valves during a period of 30 minutes. Those consist of a 13" ball valve, and two gate valves with turning wheels of 9" and 18". The ball valve has to be closed 90 degrees clockwise ( until the lever is horizontal). The gate valves have to be rotated clockwise a full turn to be considered closed.  \cite{valvetask}
-\subsection{Approach}
-\subsection{Results}
-\subsection{Conclusion and Future Work}
-
-\section{DRC Wall}
-\begin{wrapfigure}{r}{0.3\textwidth}
-  \begin{center}
-    \includegraphics[scale=0.5]{images/drilling2.png}
-  \end{center}
-  \caption{The front camera vision of drilling the wall}
-\end{wrapfigure}
-For the Wall task the robot must use a single handed cordless rotary tool with an on/off switch to cut and remove a prescribed triangular shaped piece from a wall. The wall material will be 0.5 inch thick drywall. The three vertices of the right triangle will be 6 inches diameter circles. The edges connecting the vertices will be 6 inches wide. The vertical edge will be 12 inches long, and the horizontal edge will be 24 inches long. The bottom of the triangle will be 36 inches above the ground. \cite{walltask}
-\subsection{Approach}
-\subsection{Results}
-\subsection{Conclusion and Future Work}
-
-\section{Conclusion}
 
 \section{Future Work}
 
