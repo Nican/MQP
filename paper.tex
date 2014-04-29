@@ -51,21 +51,21 @@
 
 \section{Introduction}
 
-In this paper we discuss the Worcester Polytechnic Institute and a team at Carnegie Mellon University use the Boston Dynamics Atlas robot at the DARPA Robotics Challenge (DRC). Initially we will discuss about the tasks involved in the challenge, and the hardware specifications and limitations. We will then progress to the software architecture and the mathematics behind the controller. 
+In this paper we discuss Worcester Polytechnic Institute and a team at Carnegie Mellon University use the Boston Dynamics Atlas robot at the DARPA Robotics Challenge (DRC). Initially we will discuss about the tasks involved in the challenge, and the hardware specifications and limitations. We will then progress to the software architecture and the mathematics behind the controller. 
 
 \section{DARPA Robotics Challenge}
 %\paragraph{The objective of this paper is to help the reader understand the current workings of the Carnegie Mellon’s University’s controller.}  
  
 The DARPA Robotics Challenge (DRC) is a competition of teams developing robots capable of assisting humans in responding to natural and man-made disasters. The goal of the DRC is to design a robust robotic system that has mobility and dexterity in disaster zones, the ability to use tools designed for humans, and supervised autonomy.
  
-Teams are spread in several tracks. Worcester Polytechnic Institute is in the Track C team, in which competed in the Virtual Robotics Challenge (VRC), and received funding for the Atlas robot.  
+Teams are divided in several tracks. Worcester Polytechnic Institute is in the Track C team, in which competed in the Virtual Robotics Challenge (VRC), and received funding for an Atlas robot.  
 
 \section{Hardware}
 \subsection{Atlas}
 
 As described by the Atlas Robot Operation and Maintenance Manual, "The Atlas robot’s on-board features include a real time computer, a hydraulic power pack, force/torque sensors, inertial sensing, and active thermal management. In addition to the integrated sensors, the Atlas robot comes equipped with the MultiSense-SL sensor head from Carnegie Robotics, and modular wrists"		
 
-WARNER is 6 foot 2 inches tall and weighs approximately 330 pounds. The movement is powered by 28 hydraulically-actuated rotation joints, with a closed-loop position and force control. 
+WARNER is 6 foot 2 inches tall and weighs approximately 330 pounds. The movement is powered by 28 hydraulically-actuated rotation joints, with a closed-loop position, velocity and force control. 
 
 \subsection{Sensors}
 
@@ -138,13 +138,13 @@ k_{f_p} &\cdot ( f_d - f ) &+\\
 
 \subsection{Robotiq Hand}
 
-The robot gives the option of interchanging the hands, the two primary options being the iRobot© hands, and the Sandia© hands. While both options are known companies in the industry, neither provided the power, nor robustness necessary to complete the industrial tasks. These hands were designed to perform precision tasks, such as picking up a coin, or a fist-sized rock, but not to handle a power tool, or hold the robot while climbing up a latter. The team went to an alternative hardware developed Robotiq©, a 3-Finger adaptive robot gripper, which provided a much stronger grip. 
+The robot gives the option of interchanging the hands. DARPA offered two primary options: the iRobot© hands, and the Sandia© hands. While both options are from known companies in the industry, neither provided the power, nor robustness necessary to complete the high demanding tasks of the DRC. These hands were designed to perform precision tasks, such as picking up a coin, or a fist-sized rock, but not to handle a power tool, or hold the robot while climbing up a ladder. The team chose an alternative end-effector developed by Robotiq©, a 3-Finger adaptive industrial robot gripper, which provided a much stronger grip. 
 
 \section{Software}
 The software developed my WPI and CMU are mostly written in C++, with small parts written in Python. 
 
 \subsection{DBI Behaviors}
-Boston Dynamics provided predefined behaviour for Atlas, each of these controllers can be activated from state to another state. 
+Boston Dynamics provided predefined behaviours for Atlas that allow for basic performance like balancing and walking. Transitions between behaviors can occur manually or automatically, and follow a pre-determined state-machine.
 
 \subsubsection{Manipulate}
 \begin{wrapfigure}{r}{0.3\textwidth}
@@ -153,11 +153,11 @@ Boston Dynamics provided predefined behaviour for Atlas, each of these controlle
   \end{center}
   \caption{Rviz within ROS}
 \end{wrapfigure}
-The Manipulation mode, in which the user can control all the joints above the torso, and basic control of the pelvis orientation, and the pelvis height. The legs are controlled by the Boston Dynamics controller embedded in the firmware.
+In Manipulation mode the user can control all the joints above the torso, basic control of the pelvis orientation, and the pelvis height. The legs are controlled by the Boston Dynamics controller embedded in the firmware and maintain balance.
 
-The manipulation mode has a wide range of motion if the pelvis position and orientation is controlled together with an inverse kinematics solver for the joints, but can be unpredictable. The robot has the problem that the back joint that helps torso move back and forth is not strong enough to hold, and may give out a times, causing the whole top part of the robot fall forward, or at times, make the entire robot fall forward. 
+The manipulation mode has a wide range of motion if the pelvis position and orientation is controlled together with an inverse kinematics solver for the joints, but can be unpredictable. The robot back joint that controls forwards and backwards motion was originally to weak, is unable to maintain position in certain configurations. The failure of this joint may compromise any given manipulation task.
 
-The user has the option to input any additional weight that the hand is carrying to help the controller.
+Lastly, in this mode the user has the option to input any additional weight that the hand is carrying to help the controller maintain balance.
  
 \subsubsection{Walk}
 
@@ -169,18 +169,18 @@ The user has the option to input any additional weight that the hand is carrying
 \end{wrapfigure}
 
 
-Boston Dynamics walking behaviour works by the user providing a sequence of steps paramters, which include the step duration, sway duration, swing height, lift height, and step end distance.  
+Boston Dynamics walking behaviour works by the user providing a sequence of steps parameters, which include the step duration, sway duration, swing height, lift height, and step end distance.  
 
-The WPI team developed an additional interface for Rviz, such as the robot driver is able to specify a final desired feet positions for the robot, and the software produces all the intermediate steps. It took some trial-and-error testing to figure out what the maximum step size are possible, and the program does not account for any debris on the floor. 
+The WPI team developed an additional interface for Rviz so that the robot operator is able to specify a final desired feet positions for the robot, and the software produces all the intermediate steps. It took some trial-and-error testing to figure out what the maximum step size is, and the program does not account for any debris on the floor. 
 
-Although it could be automated, it is also usually required for the driver to additionally modify the final two steps such that they are further apart, thus providing a stronger base for the walking. 
+Although it could be automated, it is also usually required for the operator to additionally modify the final two steps such that they are further apart, thus providing a larger support polygon for manipulation. 
 
 \subsection{Architecture}
 
 The system was setup in three major components: 
 
 \subsubsection{Atlas}
-The programming of the Atlas robot is inaccessible by the team, and can only be communicated by an C++ API provided by Boston Dynamics. The API simple works by connecting through the robot through an IP address, and queuing the packets received from the robot, and sending back responses. 
+The control loop inside the Atlas robot is inaccessible by the team, and can only be interfaced through a C++ API provided by Boston Dynamics. The API works by connecting to the robot through an IP address, queuing packets received from the robot, and sending back responses. 
 
 \subsubsection{Field Computer}
 The Field Computer is designed to handle the team programmed controller logic of the robot, either being a full body controller, or using the predefined behaviors given by Boston Dynamics. 
@@ -189,7 +189,12 @@ If the Field Computer fails to send a new command to the robot within 0.2 millis
 
 Also responsible for sending and receiving high level commands from the Operational Command Unit.
 
+% Low level controller + High level
+% Most calculations happen here
+
 \subsubsection{Operational Command Unit (OCU)}
+
+% High level inputs
 
 There can be more than one OCU on a team, and it is the interface to which the operator has to evaluate the robot situation, and perform the desired tasks. 
 
@@ -206,6 +211,8 @@ The challenge used a Mini Maxwell \cite{minimaxwell}, a network emulation system
 
 \subsection{ROS}
 
+% Something something...
+
 \subsubsection{MoveIt!}
 MoveIt! is a software developed with ROS to help robot developers control the robot. It contains a inverse kinematics solver that can interface with Atlas, but prevents two containing limitations: 
 \begin{inparaenum}[\itshape a\upshape)]
@@ -214,12 +221,12 @@ MoveIt! is a software developed with ROS to help robot developers control the ro
 
 \section{Full-body controller}
 % further discuss the need fo a full-body controller,
-Carnegie Mellon University developed custom software for simultaneously controlling all joints of the robot, instead of using one of the predefined the motions given by Boston Dynamics. The CMU controler contains three major aspects, an Inverse Kinematics, an Inverse Dynamics, and a high-level controller. 
+Carnegie Mellon University developed custom software for simultaneously controlling all joints of the robot as opposed to using one of Boston Dynamics's predefined behaviours. The CMU controller contains three major aspects, an Inverse Kinematics, an Inverse Dynamics, and a high-level controller. 
 
 Both Inverse Kinematics and Inverse Dynamics depends on two external libraries, SD/FAST and QuadProg++. 
 
 \subsection{SD/FAST}
-The library SD/Fast provides physically-based simulation of mechanical systems by taking a short description of an articulated system of rigid bodies and deriving the full nonlinear equations of the system. \cite{sdfast} The library takes several key factors about each sub-body in the robot, such as the link positions, mass, and inertia. The library than generates a C file that provides informations such as the center of mass, jacobians, and positions. 
+The library SD/Fast provides physically-based simulation of mechanical systems by taking a short description of an articulated system of rigid bodies and deriving the full nonlinear equations of the system. \cite{sdfast} The library takes several key factors about each sub-body in the robot, such as the link positions, mass, and inertia. The library than generates a C file that provides information such as the center of mass, jacobians, and positions. 
 
 \subsection{QuadProg++}
 QuadProg++[http://quadprog.sourceforge.net/] is a quadratic programming solver. The algorithm implements the Goldfarb-Idnani active-set dual method. At present it is limited to the solution of strictly convex quadratic programs. \cite{quadprog}
@@ -258,7 +265,7 @@ This system provides a know problem of singularities, in which when either a kne
 
 Usually there are about 36 active jacobians, there may be more or less depending on the required constraints, such as disabling a hand constraint, or enabling a desired elbow position constraint. The next procedure is an algorithm that is able to intake all the competing needs, and output the desired joint velocities. 
 
-The controller uses a system of calculating a psedu-inverse, and finding a least squares solution by using quadratic programming. We first generate a matrix, $A$, of 34 columns and about 68 rows, and a vector, $b$, with the same name of rows. The matrix is composed of all the jacobians multiplies by an weight, that must be equal to the desired change. An additional regularization identity element is added to help ensure that none of the joints move too quickly. 
+The controller uses a system of calculating a pseudo-inverse, and finding a least squares solution by using quadratic programming. We first generate a matrix, $A$, of 34 columns and about 68 rows, and a vector, $b$, with the same name of rows. The matrix is composed of all the jacobians multiplies by an weight, that must be equal to the desired change. An additional regularization identity element is added to help ensure that none of the joints move too quickly. 
 
 \begin{equation} 
 Ax = b 
@@ -305,7 +312,7 @@ Joint_{Max} - {Joint}_{Actual}
 \end{bmatrix}
 \end{equation}
 
-QuadProg++ can now solve the problem, but there exists rare situations in which a solution is infeasible. 
+QuadProg++ can now solve the problem, but there exists rare situations in which a solution is unfeasible. 
 
 We now simply add the values of $x$ into the current joint state of the robot, check again for any joints being out of bounds, and send the new desired joint position and velocities for the Inverse Dynamics.
 
@@ -315,7 +322,9 @@ We now simply add the values of $x$ into the current joint state of the robot, c
 
 \subsection{Quadratic Programming}
 
-
+% Explain how the problem is made into quadratic form
+% Explain IC, EC, etc.. how they bond the problem
+% Size of the problem?
 
 The 
 
@@ -325,6 +334,7 @@ The
 
 \subsection{Future Work}
 
+% TODO: Add picture of all 3 valves
 \section{DRC Valve}
 \begin{wrapfigure}{r}{0.3\textwidth}
   \begin{center}
@@ -335,19 +345,20 @@ The
 For this task the robot must close three industrial valves during a period of 30 minutes. Those consist of a 13" ball valve, and two gate valves with turning wheels of 9" and 18". The ball valve has to be closed 90 degrees clockwise (until the lever is horizontal). The gate valves have to be rotated clockwise a full turn to be considered closed.  \cite{valvetask}
 
 \subsection{Approach}
-The first problem to achieve the task is to step towards the valve. The operator must activate the point cloud feedback on the computer, and position a marker on top of what looks to be a valve on the collection of dots. With the marker in place, it gives the operator the position of where the feet must be placed wherever the robot is going to use the left hand, or the right hand, to operate the valve. 
+The first problem to achieve the task is to step towards the valve. The operator must activate the point cloud feedback on the computer, and position a marker on top of what looks to be a valve on the point cloud. With the marker in place, it gives the operator the position of where the feet must be placed wherever the robot is going to use the left hand, or the right hand, to operate the valve. 
 
 As demonstrated by a kinematic reachability study performed by MIT, the robot seems to have the best range of motion right in front of it's shoulder. \cite{mitaffordance} 
 
-The initial approach to complete this task was to use the Boston Dynamics motion controller, and perform the motion by solving for different positions using the MoveIt!, but it quickly presented several problems, such as when solving for the 6-dof arm, it would only sometimes find a solution and unable to complete the full motion, and when using 6-dof arm + 3-dof back joints, it would use the back way too much for the motions and cause unpredictable behaviour. 
+The initial approach to complete this task was to use the Boston Dynamics motion controller, and perform the motion by solving for different positions using MoveIt!, but this approach quickly presented several problems, such as when solving for the 6-dof arm, it would only occasionally find a solution, and it was unable to complete the full motion. Another problem arised when using the 6-dof arm + 3-dof back joints, MoveIt! would use the back joints way too much for the motions and cause unpredictable behaviour. 
 
-The final approach was Carnigue Mellon's controller, and allowing a human operator to choose in which quadrantal direction to move the end effector, and analyse the force being applied to the hand, and move the hand in which ever direction necessary. 
+The final method used the Carnigue Mellon's Full-body controller. This allowed a human operator to choose in which quadrantal direction to move the end-effector, analyze the force being applied to the hand, and move the hand in which ever direction necessary. 
 
 \subsection{Results}
-The task could be completed pretty robustly, and during the DRC trials, it was complete without any faults in 29 minutes, with only one minute to spare. 
+The task could be completed pretty robustly, and during the DRC trials, it was complete successfully in 29 minutes, with only one minute to spare. 
 
 \subsection{Conclusion and Future Work}
-It is feasible to perform the entire task autonomously. The valves are easy objects to recognize, since they are big extrusions from the wall, and the motions are fairly simple. 
+
+For a human-in-the-loop system the final approach presented is very mature. Autonomy would be the next logical goal to increase performance. The valves are easy objects to recognize since they are big extrusions from the wall, and the motions are fairly simple. 
 
 \section{DRC Wall}
 \begin{wrapfigure}{r}{0.3\textwidth}
@@ -357,11 +368,47 @@ It is feasible to perform the entire task autonomously. The valves are easy obje
   \caption{The front camera vision of drilling the wall}
 \end{wrapfigure}
 For the Wall task the robot must use a single handed cordless rotary tool with an on/off switch to cut and remove a prescribed triangular shaped piece from a wall. The wall material will be 0.5 inch thick drywall. The three vertices of the right triangle will be 6 inches diameter circles. The edges connecting the vertices will be 6 inches wide. The vertical edge will be 12 inches long, and the horizontal edge will be 24 inches long. The bottom of the triangle will be 36 inches above the ground. \cite{walltask}
+
 \subsection{Approach}
+Performing the Wall task was a bit of a challenge for two reason: \begin{inparaenum}[\itshape a\upshape)]
+\item Being able to progress the power-tool trigger and 
+\item having the mobility to cut the wall in one motion. \end{inparaenum} 
+
+\subsubsection{Picking up the drill}
+Finding the drill on the point cloud is mostly a trivial task for the robot operator. Specially since the hight of the table was given in the task description. On the robot walked to the table, DARPA gave the option to choose one of two drills:
+
+\begin{itemize}
+\item One Dewalt DCD980M2 cordless drill: The robot must grasp the drill and squeeze the trigger to maintain the drill on. The drill also has a side handle to help with maneuverability. The problem with this drill is that the Robotiq hand had no way to firmly grasp the handle and press the trigger at the same time. The shape of the handle would cause the hand's middle finger on the back side of the drill to push out the front finger out of the trigger whenever any kind of firm grasp was applied. 
+
+\item Dewalt DC550 cordless drill: It has an on/off switch. It was quite easy to grasp and operate, but pressing the small button on the base of the drill was quite difficult with the robot's large hands. The most reliable solution that we found is to shake the drill after grasping it, and add an extension on the hand such that it presses on the ON button.  Since the battery asymmetrical, the heavier side always slowly moves towards the ground, and causes the ON button to fall onto the hand's added extrusion. 
+\end{itemize}
+
+We found that the DC550 was the best option. The drill also provided a much wider range of motion while moving the arms. 
+
+\subsubsection{Cutting the wall}
+Once the drill was turned on, the robot would walk towards the wall and position his right shoulder parallel to the bigger side of the triangle. Once the robot start cutting the wall, the two main issues were:  \begin{inparaenum}[\itshape a\upshape)]
+\item Ensuring that the drill bit was far enough in the wall, and  
+\item The battery of the drill was not drained. \end{inparaenum} 
+
+DARPA promised the teams that the drill would be fully charged at the beginning of each run, but during one practice run before the competition, the battery ran out before finishing the first cut. The controller quite reliability able to perform the entire motion without having to take a step. The operator would tell the robot to move one centimeter at a time in a direction, and monitor the hand forces applied.  
+
 \subsection{Results}
+During the competition, the operator made an error in the robot operation mode. Each of the hands has the option to either move the hand by setting a position relative to the floor, setting fixed joint values. While the right hand, which is operating the drill, is used with relative positions, the left hand is left at fixed joint values, not to add additional constraints to the kinematics. 
+
+The left hand was accidentally turned on into relative positions, and since there were no graphical feedback about the operation of each hand, the operator was unable to determine why the robot was unable to move as freely as necessary to cut the wall. On an attempt to reset the controller while the robot was still running to fix the unexpected behavior, the robot fell, having to reset the task. 
+
+On the second attempt, the team only had about 10 minutes left to perform the task, and while it was possible to grab and turn on the drill, the robot was unable to finish the first cut in time.
+
 \subsection{Conclusion and Future Work}
 
+The approach of the task was solid and presented little issues most of the times. Due to the operator stress, and lack of visual cues about the robot state, the task was not completed. It is also feasible to perform the task autonomously with the current technology and resources. 
+
 \section{Conclusion}
+
+The WPI-CMU team performed quite well for the period of 4 months. There are still a lot of research left to be performed, and a lot of improvements to be performed in the code base. The work put into the challenge were very task-specific to the specifications given by DARPA, and would probably perform poorly compared to anything else. 
+
+
+There is already research on all kind of algorithms, but for future years the problem will become more on how to put all of these pieces of work together under one platform. 
 
 \section{Robust Dynamic Programming}
 Model based optimal control is a powerful tool but relies heavily on the accuracy of the system model, which is not a trivial task to derive. There are many parameters involved, such as friction, sensor readings, calibrations, and the model may change over time due to wear, temperature, humidity, contact condition, and others.
@@ -494,7 +541,7 @@ Since $2.6032705 > 2.6002660$, we change the value $U(x_0)={-1}$. Giving a new o
 
 It is important to notice the optimal torque may completely change directions throughout the iterations due to the value of the neighbours changing. (Further details with the video)
 
-\subsection{Analysing this solution}
+\subsection{Analyzing this solution}
 The algorithm is far from being real time, since for the single-link pendulum case, on an 8-core CPU at 2.8GHz, takes about 4 seconds for each iteration, and about 1 hour for the 1000 iterations, but it does generate very robust policy tables.
 
 On the following plot we show the policy of 10,000 iterations running against a pendulum, position of the pendulum relative to the up position, starting at pi, pointing down, and with 0 velocity. It is interesting to see that the policy follows similar to a bang-bang controller, using near maximum torque on both directions, until the system has enough energy to reach the necessary solution. (TODO: Talk about behavior near t=45seconds, where the exact amount of force is applied to get the up position)
@@ -523,6 +570,13 @@ For example, OpenGL could be used to perform the multiplication of two 256 by 25
 
 Later during 2007, NVIDIA released CUDA, a general purpose computing standard that would allow developers to create GPU based software, and later on 2008, the open source community followed with OpenCL. While OpenCL and CUDA follows the same principles as fragment shaders, it also opened doors for other applications, such as atomic operations, thread syncing, memory barriers, and others.
 
+\subsection{Applying DDP with CUDA}
+Since a new improved torques can be found in parallel with other points, we can run the Dynamic Programming Algorithm using CUDA.  We initialize the process by allocating two memory buffers in the device, and reset all of the values to 0.  We create a CUDA kernel, which takes an identification number, input memory buffer, and compares the current policy with a new random policy, and stores the result on an output buffer. 
+
+We then swap the input buffer with the output buffer and repeat the process for the given number of iterations.  The process otherwise is equivalent to the CPU’s counterpart, but instead of taking up to 1 hour to complete, the GPU process only took 2 minutes. 
+
+The limitations with using a GPU for this kind of process is a more limited memory space, while it can be relatively cheap to buy more computer RAM, or allow the computer swap memory into a solid state drive, the GPU is limited to only to the memory available on the device, and even devices top of the line today, such as the NVIDIA Tegra 4, only provides 4GB of memory. 
+
 \section{Future Work}
 
 \begin{itemize}
@@ -531,8 +585,7 @@ Later during 2007, NVIDIA released CUDA, a general purpose computing standard th
 \end{itemize}
 
 \section{Acknowledgment}
-(TODO: Special thanks to NVIDIA) 
-
+(TODO: Special thanks to NVIDIA ,DARPA, CMU, Eric Whitman, etc... ) 
 
 %write your main text here
 %\LaTeX template.
@@ -551,7 +604,7 @@ Later during 2007, NVIDIA released CUDA, a general purpose computing standard th
 %  \end{center}
 %\end{figure}
 
-
+\pagebreak
 
 \bibliography{referencex}
 \bibliographystyle{plain}
