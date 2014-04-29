@@ -58,7 +58,7 @@ In this paper we discuss the Worcester Polytechnic Institute and a team at Carne
  
 The DARPA Robotics Challenge (DRC) is a competition of teams developing robots capable of assisting humans in responding to natural and man-made disasters. The goal of the DRC is to design a robust robotic system that has mobility and dexterity in disaster zones, the ability to use tools designed for humans, and supervised autonomy.
  
-Teams are spread in several tracks. Worcester Polytechnic Institute is in the Track C team, in which competed in the Virtual Challenge (DVC), and received funding for the Atlas robot.  
+Teams are spread in several tracks. Worcester Polytechnic Institute is in the Track C team, in which competed in the Virtual Robotics Challenge (VRC), and received funding for the Atlas robot.  
 
 \section{Hardware}
 \subsection{Atlas}
@@ -136,13 +136,9 @@ k_{f_p} &\cdot ( f_d - f ) &+\\
 {ff}_{f_d} &\cdot f_d &+ {ff}_{const}
 \end{align*}
 
-(TODO: Show plot about setting the position control too high or too low.)
-
 \subsection{Robotiq Hand}
 
-The robot gives the option of interchanging the hands, the two primary options being the iRobot© hands, and the Sandia© hands. While both options are known companies in the industry, neither provided the power, nor robustness necessary to complete the industrial tasks. These hands were designed to perform precision tasks, such as picking up a coin, or a fist-sized rock, but not to pick up a power tool. The team went to an alternative in using hardware developed Robotiq©, a 3-Finger adaptive robot gripper, which provided a much stronger grip. 
-
-
+The robot gives the option of interchanging the hands, the two primary options being the iRobot© hands, and the Sandia© hands. While both options are known companies in the industry, neither provided the power, nor robustness necessary to complete the industrial tasks. These hands were designed to perform precision tasks, such as picking up a coin, or a fist-sized rock, but not to handle a power tool, or hold the robot while climbing up a latter. The team went to an alternative hardware developed Robotiq©, a 3-Finger adaptive robot gripper, which provided a much stronger grip. 
 
 \section{Software}
 The software developed my WPI and CMU are mostly written in C++, with small parts written in Python. 
@@ -159,15 +155,9 @@ Boston Dynamics provided predefined behaviour for Atlas, each of these controlle
 \end{wrapfigure}
 The Manipulation mode, in which the user can control all the joints above the torso, and basic control of the pelvis orientation, and the pelvis height. The legs are controlled by the Boston Dynamics controller embedded in the firmware.
 
-It is fairly easy to use, and has a wide range of motion if the pelvis position and orientation is controlled together with an inverse kinematics solver for the joints, but can be unpredictable. The robot has the problem that the back joint that helps torso move back and forth is not strong enough to hold, and may give out a times, causing the whole top part of the robot fall forward, or at times, make the entire robot fall forward. 
+The manipulation mode has a wide range of motion if the pelvis position and orientation is controlled together with an inverse kinematics solver for the joints, but can be unpredictable. The robot has the problem that the back joint that helps torso move back and forth is not strong enough to hold, and may give out a times, causing the whole top part of the robot fall forward, or at times, make the entire robot fall forward. 
 
 The user has the option to input any additional weight that the hand is carrying to help the controller.
-
-%%%% MOVE OUT OF HARDWARE%%%%%
-MoveIt! is a software developed with ROS to help robot developers control the robot. It contains a inverse kinematics solver that can interface with Atlas, but prevents two containing limitations: 
-\begin{inparaenum}[\itshape a\upshape)]
-\item The inverse kinematics solver has no option to give approximate solutions, and will fail to give joint state values unless a very approximate solution for a desired hand position exists.
-\item It does not account for modifying the pelvis position and orientation for solving for a solution. \end{inparaenum}
  
 \subsubsection{Walk}
 
@@ -215,6 +205,12 @@ DARPA structured a predictable, but limited bandwidth communication between the 
 The challenge used a Mini Maxwell \cite{minimaxwell}, a network emulation system, to enforce the bandwidth limitations. The exact configurations of the Maxwell was never revealed, but whenever the bandwidth limitations was surpassed, packets seemed to be LIFO queued, sometimes causing images from the video stream to come out of order. 
 
 \subsection{ROS}
+
+\subsubsection{MoveIt!}
+MoveIt! is a software developed with ROS to help robot developers control the robot. It contains a inverse kinematics solver that can interface with Atlas, but prevents two containing limitations: 
+\begin{inparaenum}[\itshape a\upshape)]
+\item The inverse kinematics solver has no option to give approximate solutions, and will fail to give joint state values unless a very approximate solution for a desired hand position exists.
+\item It does not account for modifying the pelvis position and orientation for solving for a solution. \end{inparaenum}
 
 \section{Full-body controller}
 % further discuss the need fo a full-body controller,
@@ -330,10 +326,28 @@ The
 \subsection{Future Work}
 
 \section{DRC Valve}
-For this task the robot must close three industrial valves during a period of 30 minutes. Those consist of a 13" ball valve, and two gate valves with turning wheels of 9" and 18". The ball valve has to be closed 90 degrees clockwise ( until the lever is horizontal). The gate valves have to be rotated clockwise a full turn to be considered closed.  \cite{valvetask}
+\begin{wrapfigure}{r}{0.3\textwidth}
+  \begin{center}
+    \includegraphics[scale=0.2]{images/turn_valve.png}
+  \end{center}
+  \caption{Robot in front of valves. Both shoulders right in front of each valve.}
+\end{wrapfigure}
+For this task the robot must close three industrial valves during a period of 30 minutes. Those consist of a 13" ball valve, and two gate valves with turning wheels of 9" and 18". The ball valve has to be closed 90 degrees clockwise (until the lever is horizontal). The gate valves have to be rotated clockwise a full turn to be considered closed.  \cite{valvetask}
+
 \subsection{Approach}
+The first problem to achieve the task is to step towards the valve. The operator must activate the point cloud feedback on the computer, and position a marker on top of what looks to be a valve on the collection of dots. With the marker in place, it gives the operator the position of where the feet must be placed wherever the robot is going to use the left hand, or the right hand, to operate the valve. 
+
+As demonstrated by a kinematic reachability study performed by MIT, the robot seems to have the best range of motion right in front of it's shoulder. \cite{mitaffordance} 
+
+The initial approach to complete this task was to use the Boston Dynamics motion controller, and perform the motion by solving for different positions using the MoveIt!, but it quickly presented several problems, such as when solving for the 6-dof arm, it would only sometimes find a solution and unable to complete the full motion, and when using 6-dof arm + 3-dof back joints, it would use the back way too much for the motions and cause unpredictable behaviour. 
+
+The final approach was Carnigue Mellon's controller, and allowing a human operator to choose in which quadrantal direction to move the end effector, and analyse the force being applied to the hand, and move the hand in which ever direction necessary. 
+
 \subsection{Results}
+The task could be completed pretty robustly, and during the DRC trials, it was complete without any faults in 29 minutes, with only one minute to spare. 
+
 \subsection{Conclusion and Future Work}
+It is feasible to perform the entire task autonomously. The valves are easy objects to recognize, since they are big extrusions from the wall, and the motions are fairly simple. 
 
 \section{DRC Wall}
 \begin{wrapfigure}{r}{0.3\textwidth}
