@@ -233,9 +233,12 @@ QuadProg++[http://quadprog.sourceforge.net/] is a quadratic programming solver. 
 
 The library has been rewritten using the Eigen datatypes, to utilize vectorization, and be easier to work with the rest of the code base. 
 
+\subsection{Quadratic Programming}
 
-% Intro to all the following sections ( basically a summary)
-% IK ID QP
+% Explain how the problem is made into quadratic form
+% Explain IC, EC, etc.. how they bond the problem
+% Size of the problem?
+
 
 \subsection{Inverse Kinematics}
 
@@ -319,14 +322,8 @@ We now simply add the values of $x$ into the current joint state of the robot, c
 \subsection{Inverse Dynamics}
 
 
-
-\subsection{Quadratic Programming}
-
-% Explain how the problem is made into quadratic form
-% Explain IC, EC, etc.. how they bond the problem
-% Size of the problem?
-
-The 
+\subsection{Finding Graspable Points}
+One of the challenges to come is the ability to grasp arbitrary points on an object. Contrary to most research where the robot is fixed to a table, such as the ones found in a car factory, or the PR2, in which the robot is on wheels, Atlas has to take the center of mass into consideration, making most conventional planners almost impossible to work with.
 
 \subsection{Results}
 
@@ -408,7 +405,9 @@ The approach of the task was solid and presented little issues most of the times
 The WPI-CMU team performed quite well for the period of 4 months. There are still a lot of research left to be performed, and a lot of improvements to be performed in the code base. The work put into the challenge were very task-specific to the specifications given by DARPA, and would probably perform poorly compared to anything else. 
 
 
-There is already research on all kind of algorithms, but for future years the problem will become more on how to put all of these pieces of work together under one platform. 
+There is already research on all kind of algorithms, but for future years the problem will become more on how to put all of these pieces of work together under one platform, and allow the robot to autonomously perform operations on the world. 
+
+Boston Dynamics has giving news that the Atlas robot may change over time, and this provides further complications on how to adapt the current code to also take into account the additional changes without breaking the current features. 
 
 \section{Robust Dynamic Programming}
 Model based optimal control is a powerful tool but relies heavily on the accuracy of the system model, which is not a trivial task to derive. There are many parameters involved, such as friction, sensor readings, calibrations, and the model may change over time due to wear, temperature, humidity, contact condition, and others.
