@@ -1,59 +1,111 @@
-% this is a template for an ``article'' document, the most common
-% for research papers. Theses may be better written in the ``report''
-% format.
-
-\documentclass{article}
-\usepackage{graphicx} 
+\documentclass[12pt]{report}
+\usepackage{amsfonts}
 \usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{cancel}
+\usepackage{fullpage}
+\usepackage{graphicx}
+\usepackage{mathptmx}
+\usepackage{parskip}
+\usepackage{indentfirst}
+\usepackage{xr}
+\usepackage{xr-hyper}
 \usepackage{paralist}
+\usepackage{epstopdf}
 \usepackage{wrapfig}
-\usepackage[all]{xy}
-\usepackage{cite}
+%\usepackage{hyperref}
+%\usepackage{mcode}
 
 
-% set margins to 1 inch all around the page, no header or footer.
-\setlength{\textheight}{9in}
-\setlength{\textwidth}{6.5in}
-\setlength{\topmargin}{-0.125in}
-\setlength{\oddsidemargin}{-.2in}
-\setlength{\evensidemargin}{-.2in}
-\setlength{\headsep}{0in}
+\newcommand{\abs}[1]{\lvert#1\rvert}  % just makes it easier to do absolute values
+\setlength{\parindent}{15pt}
+\setcounter{topnumber}{10}
+\setcounter{totalnumber}{10}
 
-% enable insertion of graphics, ``smart'' line spacing, long tables
-% for the long (i.e. more than 1 page) tables, refer to supertab.ps
-\usepackage{setspace,supertabular}	
+\pagestyle{empty}  % do not number the pages
 
-%\usepackage[dvips]{graphicx}
-% use \usepackage[dvips,draft]{graphicx} during document creation if
-% you have screenshots in your file.
-
-
-% output the list of used files to the terminal during compilation.
-% this helps to keep track of the figures and tex-files you are using.
-\listfiles
-
-% set the path for figures.
-% all figures should be in a subdirectory under the document directory
-\graphicspath{{figures/}}
-
-% define the line spacing. Footnotes and Caption remain single-spaced
-\singlespacing
-% alternatives: \onehalfspacing or \doublespacing or \setstretch{1.6}
-
-
-% this was the preamble, now comes the main text
 \begin{document}
+\rule{0pt}{1.1in}
+
+%The command \rule[lift]{width}{height} produces a line of specified width and height, lifted above the location the amount "lift"
+                % So, here we produce a space (0pt thickness) of height 2 in.
+
+\begin{center}
+{\Huge DARPA Robotics Challenge}
+
+\vspace{0.4in}
+
+\rule{2.1in}{0.1pt}
+
+\vspace{0.5cm}
 
 
-%%%% TODO: OVERALL INTRO %%%%
-% Discuss the problem
-% Section 1 talks about..sections 2, etc...
+\textbf{A Major Qualifying Project\\
+Submitted to the Faculty of\\
+Worcester Polytechnic Institute\\
+in partial fulfillment of the requirements for the\\
+Degree in Bachelor of Science\\
+in\\
+Mathematical Sciences
+and
+Computer Science\\
+By
+\\*[12pt]}
 
-\section{Introduction}
+Henrique Polido\\
+\vspace{0.7cm}
+\rule{2.1in}{0.1pt}
+\vspace{0.5cm}
+
+
+\end{center}
+\vspace{0.5cm}  Date:  \today
+
+\begin{center}
+Approved: \vspace{0.5cm}
+\end{center}
+
+\hfill \underline{ \hspace{3in}}
+
+\hfill Professor B.S. Arthur C. Heinricher~~
+
+\hfill \underline{ \hspace{3in}}
+
+\hfill Professor B.S. Michael A. Gennert~~
+
+\vspace{ 0.5cm}
+
+\noindent Keywords:\\
+1. Inverse Kinematics \\
+2. Robotics \\
+
+\setcounter{page}{1}
+\begin{abstract}
 
 In this paper we discuss the Worcester Polytechnic Institute and a team at Carnegie Mellon University use the Boston Dynamics Atlas robot at the DARPA Robotics Challenge (DRC). Initially we will discuss about the tasks involved in the challenge, and the hardware specifications and limitations. We will then progress to the software architecture and the mathematics behind the controller. 
 
-\section{DARPA Robotics Challenge}
+
+\end{abstract}
+
+\newpage
+
+\section*{Acknowledgements}
+I would like to express my very great appreciation to my project advisers, Professor Arthur C. Heinricher and Professor Michael A. Gennert without whom this project would not have been possible. Their knowledge on the field and support to keep moving forward helped in the continuous development of the software for the Atlas robot. 
+
+\newpage
+\setcounter{page}{1}
+\renewcommand{\thepage}{\roman{page}}
+\pagestyle{plain}
+
+\newpage
+\tableofcontents
+\newpage
+\renewcommand{\thepage}{\arabic{page}}
+\setcounter{page}{1}
+\pagestyle{plain}
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{DARPA Robotics Challenge}
 %\paragraph{The objective of this paper is to help the reader understand the current workings of the Carnegie Mellon’s University’s controller.}  
  
 The DARPA Robotics Challenge (DRC) is a competition of teams developing robots capable of assisting humans in responding to natural and man-made disasters. The goal of the DRC is to design a robust robotic system that has mobility and dexterity in disaster zones, the ability to use tools designed for humans, and supervised autonomy.
@@ -363,7 +415,7 @@ For the Wall task the robot must use a single handed cordless rotary tool with a
 
 \section{Conclusion}
 
-\section{Robust Dynamic Programming}
+\chapter{Robust Dynamic Programming}
 Model based optimal control is a powerful tool but relies heavily on the accuracy of the system model, which is not a trivial task to derive. There are many parameters involved, such as friction, sensor readings, calibrations, and the model may change over time due to wear, temperature, humidity, contact condition, and others.
 
 Eric Whitman looks into using Multiple Model Dynamic (MMD) Programming, and uses the inverted pendulum swing-up problem to demonstrate the algorithm. \cite{eric_thesis}
@@ -555,10 +607,12 @@ Later during 2007, NVIDIA released CUDA, a general purpose computing standard th
 
 \bibliography{referencex}
 \bibliographystyle{plain}
+% not just one chapter, but as many as needed to explain the results
+
+\newpage \bibliographystyle{unsrt}
+\bibliography{references} % reference lists, best to use BibTeX for this
+
+\nocite{*}
+%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}
-
-
-
-
-
 
