@@ -109,6 +109,19 @@ Lastly, thanks to the Nvidia Corporation for providing Worcester Polytechnic Ins
 \setcounter{page}{1}
 \pagestyle{plain}
 %%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Introduction}
+The work described in this report was done during the 2013-14 academic year in support of the WPI’s participation in the DARPA Robotics Challenge (DRC). WPI participated in two teams for the competition held in Homestead, Florida in December 2013.  For one of the teams, WPI faculty and staff joined a group headed by Drexel University.  For the other team, WPI partnered with faculty, staff, and students from Carnegie Mellon University. The work described here was done in support of the WPI-CMU team.  
+
+There have been tremendous advances in solving the problem of controlling a humanoid robots \cite{eric_thesis}. Some of the mechanical problems have been solved by engineers at Boston Dynamics with the development of the Atlas robot. Key properties of the hardware, including sensors and actuators, are discussed in Section 3 below. 
+
+Advances in mathematical modelling for the control of robotic systems have also made significant advances in recent years.  While the theory is well developed1 (TODO: ???), limits in computational speed and power have kept the theory far short of practice.  One of the standard approaches for solving  the kind of optimization problems that arise in motion planning for a robot is the method of Dynamic Programming, originally developed by Richard Bellman. (TODO: ???) While the theory is powerful, the approach suffers from the curse of dimensionality \cite{random_sampling_dynamic_programming} and computational approaches fail for any realistically high-dimensional models.  The Atlas robot is very high dimensional, 28 independent hydraulic actuated joints. In addition, computational approaches to optimization can be very sensitive to model and sensor error.  There is a large literature in the area of robust dynamic programming (TODO: ???) which focuses reducing sensitivity to error.  
+
+Any efficient computational approach must work with an approximate state space and an approximate controller and an approximation to the solution to the dynamic programming equations.  Atkison's \cite{random_sampling_dynamic_programming} and his co-authors have studied an approximation method that replaces a full optimization at each point in the state space with a simple comparison between the current “best” control strategy and a single, ramdomly generated, alternative.  Whitman \cite{eric_thesis} used this approximation technique but also studies an approach that separates the high-dimensional control problem for the Atlas robot into a family of low-dimensional (and so feasible) optimization problems and builds an approximate solution by integrating information from the many separate problems.  
+Part of the work done in this project was on the implementation of approximation methods and techniques for speeding up the dynamic programming algorithm.  The approach is applied to the simplest model problem: the swing-up pendulum. \cite{eric_thesis} 
+
+We will begin by describing some of the background, the motivation and the details in the Robotics Challenge, focusing on the properties and the limitations of the hardware.  The next section considers the software and the
+
+
 \chapter{DARPA Robotics Challenge}
 %\paragraph{The objective of this paper is to help the reader understand the current workings of the Carnegie Mellon’s University’s controller.}  
  
@@ -285,13 +298,31 @@ Carnegie Mellon University developed custom software for simultaneously controll
 Both Inverse Kinematics and Inverse Dynamics depends on two external libraries, SD/FAST and QuadProg++. 
 
 \subsection{SD/FAST}
-The library SD/Fast provides physically-based simulation of mechanical systems by taking a short description of an articulated system of rigid bodies and deriving the full nonlinear equations of the system. \cite{sdfast} The library takes several key factors about each sub-body in the robot, such as the link positions, mass, and inertia. The library than generates a C file that provides informations such as the center of mass, jacobians, and positions. 
+The library SD/Fast provides physically-based simulation of mechanical systems by taking a short description of an articulated system of rigid bodies and deriving the full nonlinear equations of the system. \cite{sdfast} The library takes several key factors about each sub-body in the robot, such as the link positions, mass, and inertia. The library than generates a C file that provides informations such as the center of mass, jacobians, and positions.
+
+
+%TODO: Subsection about Jacobians? 
 
 \subsection{Quadratic Programming}
 
+Quadratic programming is a special type of mathematical optimization problem. It minimizes a quadratic function of several variables subject to linear constraints on the variables. 
 
+The problem is formulated as defining a square matrix $Q$, and column vectors, $x$ and $c$, and minimizing the function, $f(x)$ in respects:
 
-QuadProg++[http://quadprog.sourceforge.net/] is a quadratic programming solver. The algorithm implements the Goldfarb-Idnani active-set dual method. At present it is limited to the solution of strictly convex quadratic programs. \cite{quadprog}
+\begin{equation} 
+f(x) = \frac{1}{2}x^TQx + c^Tx
+\end{equation}
+
+And have two types of constraints, of the form:
+
+\begin{equation} 
+Ax \le b 
+\end{equation}
+\begin{equation} 
+Ex = d 
+\end{equation}
+
+QuadProg++ is a quadratic programming solver. The algorithm implements the Goldfarb-Idnani active-set dual method. At present it is limited to the solution of strictly convex quadratic programs. \cite{quadprog}
 
 The library has been rewritten using the Eigen datatypes, to utilize vectorization, and be easier to work with the rest of the code base. 
 
@@ -584,15 +615,18 @@ Later during 2007, NVIDIA released CUDA, a general purpose computing standard th
 
 \section{Future Work}
 
-\begin{itemize}
-\item Putting the controller on a decided processor. http://stackoverflow.com/a/13585364/99966 
-\item Look at the difference between the IMU sensor data, and the SD/Fast controller. Possibilities about detecting, or preventing, falls. 
-\end{itemize}
+There the team has performed well on the DRC trials, it is important as well to create a strong code base that can evolve over the years, and adapt to future challenges. An important aspect of having a strong base is being able to perform experiments, and build upon previously developed work. 
+
+%Science is the process of having a hypothesis, creating an experiment, and analysing the results.  
+
+As mentioned earlier in the paper, there is plenty of research in the subjects of object detection, manipulability, planning, and others, but it is a different challenge to be able to adapt all this work into a single code base, and be able to perform experiments, while using data from all the different aspects of the robot. 
+
+New goals for the team should focus on tools that can be reused and extended at later times. For example, with the step planner, a developer should be able to instantiate a new planner either with simulation, or the real robot, and have access to modify each of the steps. At a later time, a team can extend the initial step planner to automatically generate all of the steps, but should still leave the option to use the old planner.
+
+A great library is one that allows the user to choose the tools to complete their task, and modify one of the steps as necessary, and it is a difficulty that research does not often present to students, since students are usually only required to use a library, instead of developing on the library itself. 
 
 
-%write your main text here
-%\LaTeX template.
-
+The ultimate goal of this project would be to perform all the tasks a human is able to do, but  developers must be able to break down the complex tasks into simpler steps, and understand the difficulties that comes before moving into solving a generalized case. 
 
 
 %this is an example how to include a figure in eps-format. Refer to 
@@ -612,9 +646,6 @@ Later during 2007, NVIDIA released CUDA, a general purpose computing standard th
 \bibliography{referencex}
 \bibliographystyle{plain}
 % not just one chapter, but as many as needed to explain the results
-
-\newpage \bibliographystyle{unsrt}
-\bibliography{references} % reference lists, best to use BibTeX for this
 
 \nocite{*}
 %%%%%%%%%%%%%%%%%%%%%%%%%
