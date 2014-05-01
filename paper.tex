@@ -114,7 +114,7 @@ The work described in this report was done during the 2013-14 academic year in s
 
 There have been tremendous advances in solving the problem of controlling a humanoid robots \cite{eric_thesis}. Some of the mechanical problems have been solved by engineers at Boston Dynamics with the development of the Atlas robot. Key properties of the hardware, including sensors and actuators, are discussed in Section 3 below. 
 
-Advances in mathematical modelling for the control of robotic systems have also made significant advances in recent years.  While the theory is well developed1 (TODO: ???), limits in computational speed and power have kept the theory far short of practice.  One of the standard approaches for solving  the kind of optimization problems that arise in motion planning for a robot is the method of Dynamic Programming, originally developed by Richard Bellman. (TODO: ???) While the theory is powerful, the approach suffers from the curse of dimensionality \cite{random_sampling_dynamic_programming} and computational approaches fail for any realistically high-dimensional models.  The Atlas robot is very high dimensional, 28 independent hydraulic actuated joints. In addition, computational approaches to optimization can be very sensitive to model and sensor error.  There is a large literature in the area of robust dynamic programming (TODO: ???) which focuses reducing sensitivity to error.  
+Advances in mathematical modelling for the control of robotic systems have also made significant advances in recent years.  While the theory is well developed \cite{Deterministic_and_Stochastic}, limits in computational speed and power have kept the theory far short of practice.  One of the standard approaches for solving  the kind of optimization problems that arise in motion planning for a robot is the method of Dynamic Programming, originally developed by Richard Bellman. \cite{Deterministic_and_Stochastic} While the theory is powerful, the approach suffers from the curse of dimensionality \cite{random_sampling_dynamic_programming} and computational approaches fail for any realistically high-dimensional models.  The Atlas robot is very high dimensional, 28 independent hydraulic actuated joints. In addition, computational approaches to optimization can be very sensitive to model and sensor error. 
 
 Any efficient computational approach must work with an approximate state space and an approximate controller and an approximation to the solution to the dynamic programming equations.  Atkison's \cite{random_sampling_dynamic_programming} and his co-authors have studied an approximation method that replaces a full optimization at each point in the state space with a simple comparison between the current “best” control strategy and a single, ramdomly generated, alternative.  Whitman \cite{eric_thesis} used this approximation technique but also studies an approach that separates the high-dimensional control problem for the Atlas robot into a family of low-dimensional (and so feasible) optimization problems and builds an approximate solution by integrating information from the many separate problems.  
 Part of the work done in this project was on the implementation of approximation methods and techniques for speeding up the dynamic programming algorithm.  The approach is applied to the simplest model problem: the swing-up pendulum. \cite{eric_thesis} 
@@ -233,15 +233,16 @@ The Manipulation mode, in which the user can control all the joints above the to
 The manipulation mode has a wide range of motion if the pelvis position and orientation is controlled together with an inverse kinematics solver for the joints, but can be unpredictable. The robot has the problem that the back joint that helps torso move back and forth is not strong enough to hold, and may give out a times, causing the whole top part of the robot fall forward, or at times, make the entire robot fall forward. 
 
 The user has the option to input any additional weight that the hand is carrying to help the controller.
- 
-\subsubsection{Walk}
 
-\begin{wrapfigure}{r}{0.3\textwidth}
+
+\subsubsection{Walk}
+ \begin{wrapfigure}{r}{0.3\textwidth}
   \begin{center}
-    \includegraphics[scale=0.5]{images/step_gui.png}
+    \includegraphics[scale=0.4]{images/step_gui.png}
   \end{center}
   \caption{The planned steps for the robot walking forward and to the left}
 \end{wrapfigure}
+
 
 
 Boston Dynamics walking behaviour works by the user providing a sequence of steps paramters, which include the step duration, sway duration, swing height, lift height, and step end distance.  
@@ -336,7 +337,7 @@ Inverse kinematics is the process of given an desired effector positions, genera
 
 Atlas is a bipedal robot, it is not simple to define a set of rules that describes all possible motions. Besides taking measure on the desired state, the kinematics also have account for the center of mass.
 
-The robot is defined as tree/skeleton starting from the pelvis, defining the weight and distances between each joint. When we generate Jacobians to move the end effector of each limbs, we also give it the ability to move the pelvis on a global coordinate frame. The hand jacobians has no direct effect on the the leg joints, but indirectly moves the imaginary point that the pelvis should follow, and the legs move with it. 
+The robot is defined as tree/skeleton starting from the pelvis, defining the weight and distances between each joint. When we generate Jacobians \cite{robot_modeling} to move the end effector of each limbs, we also give it the ability to move the pelvis on a global coordinate frame. The hand jacobians has no direct effect on the the leg joints, but indirectly moves the imaginary point that the pelvis should follow, and the legs move with it. 
 
 During this current iteration we have the following competing Jacobians that control the robot: 
 \begin{enumerate}
@@ -406,25 +407,48 @@ QuadProg++ can now solve the problem, but there exists rare situations in which 
 We now simply add the values of $x$ into the current joint state of the robot, check again for any joints being out of bounds, and send the new desired joint position and velocities for the Inverse Dynamics.
 
 \subsection{Inverse Dynamics}
+Inverse Dynamics is responsible for generating the torques applied to each joint of the Atlas robot. The equations of motion and the constraint equations for a humanoid robot can be described as:
+\vspace{-5pt}
+\begin{equation} \label{eq2}
+\begin{split}
+M(q)\ddot q + h(q,\dot q) &= S\tau + J^T(q)F\\
+J(q)\ddot q + \dot J(q,\dot q)\dot q & = \ddot x
+\end{split}
+\end{equation}
+where $(q,\dot {q})$ is the state of the system, $M(q)$ is the inertia matrix, $h(q,\dot q)$ is the sum of gravitational, centrifugal and Coriolis forces, $S$ is a selection matrix, $\tau$ is a vector of joint torques, $F$ is a vector of contact forces, and $x$ is a vector of contact positions and orientations.
 
+\subsection{Finding grasping positions}
+On an attempt to perform the debris task more efficiently, a routine was created in which the program iterates forward several instances of the Inverse Kinematics part of the controller, and checks how well the controller is able to grab the target object, and picks the one in which the center of mass is most stable within the support polygon.
+
+Several unexpected behaviors showed from this experiment: The controller would prefer to to leave joints at the joint limits unless it was complete necessary to move it to achieve a necessary motion, and when moving the arm away from the ground, the controller will choose to move the legs first until the legs reach a singularity. 
+
+It is unclear why the controller prefers to stay at joint limits, but might be due to the way that QuadProg++ adds special constraints while at a boundary, and does not move away from the edge cases unless necessary. Although no algorithmic solution was attempted, the current solution to not to allow the initial state when sampling goal positions to have  have any joints at the limit.
+
+Singularities are an inconvenient truth of working with Jacobians. The current solution is to simply avoid reaching singularities on the elbows and knees, or add special cases in the code. \cite{eric_thesis}
 
 
 \subsection{Results}
+Overall the controller is able to perform full body motions without much work from the developer, and sometimes make almost human-like behavior. Where used, it performed well on the DRC trials, and gave little trouble for the operator. 
 
-\subsection{Conclusion}
+There still exists edge cases in which the controller will act unexpectedly, such as the elbows or knees reaching a singularity, joints being stuck at a boundary, and the controller performing large body motions for motions that could be accomplished only with the arms. 
 
 \subsection{Future Work}
 
+Members at Carnegie Mellon University suggested to use SNOPT, a software package for solving large-scale optimization problems, to help with path planning. SNOPT is able to perform what QuadProg++ does, but over large motions and account for additional dynamic constraints. 
+
+Boston Dynamics has mentioned that the robot is receiving several major modifications on the arms and legs, including adding and switching the last 3 joints of each arm to be electric, instead of hydraulic, and providing new legs. All of these changes are bound to be completed by the end of January, which provides several complications in developing software that works specifically for Atlas in his current state. 
+
 \section{DRC Valve}
+
+For this task the robot must close three industrial valves during a period of 30 minutes. Those consist of a 13" ball valve, and two gate valves with turning wheels of 9" and 18". The ball valve has to be closed 90 degrees clockwise (until the lever is horizontal). The gate valves have to be rotated clockwise a full turn to be considered closed.  \cite{valvetask}
+
+\subsection{Approach}
 \begin{wrapfigure}{r}{0.3\textwidth}
   \begin{center}
     \includegraphics[scale=0.2]{images/turn_valve.png}
   \end{center}
   \caption{Robot in front of valves. Both shoulders right in front of each valve.}
 \end{wrapfigure}
-For this task the robot must close three industrial valves during a period of 30 minutes. Those consist of a 13" ball valve, and two gate valves with turning wheels of 9" and 18". The ball valve has to be closed 90 degrees clockwise (until the lever is horizontal). The gate valves have to be rotated clockwise a full turn to be considered closed.  \cite{valvetask}
-
-\subsection{Approach}
 The first problem to achieve the task is to step towards the valve. The operator must activate the point cloud feedback on the computer, and position a marker on top of what looks to be a valve on the collection of dots. With the marker in place, it gives the operator the position of where the feet must be placed wherever the robot is going to use the left hand, or the right hand, to operate the valve. 
 
 As demonstrated by a kinematic reachability study performed by MIT, the robot seems to have the best range of motion right in front of it's shoulder. \cite{mitaffordance} 
@@ -482,8 +506,6 @@ On the second attempt, the team only had about 10 minutes left to perform the ta
 
 The approach of the task was solid and presented little issues most of the times. Due to the operator stress, and lack of visual cues about the robot state, the task was not completed. It is also feasible to perform the task autonomously with the current technology and resources. 
 
-\section{Conclusion}
-
 \chapter{Robust Dynamic Programming}
 Model based optimal control is a powerful tool but relies heavily on the accuracy of the system model, which is not a trivial task to derive. There are many parameters involved, such as friction, sensor readings, calibrations, and the model may change over time due to wear, temperature, humidity, contact condition, and others.
 
@@ -493,7 +515,7 @@ By using the content provided in his thesis, the references, and example code, w
 
 Based on his previous work this paper aims to clarify the fundamental concepts of MMD and provide graspable examples. Furthermore, a faster running-time implementation using a General Purpose Graphical Processing Unit (GPGPU).
 
-\subsection{Looking at a Problem}
+\section{Looking at a Problem}
 To have a better understanding on how the algorithm works, we are going to look at the  inverse pendulum swing-up example, which consists of a motor attached to the end of pendulum, and the controller aims to bring the pendulum to an upright position by applying torques based on the current state of the system. 
 
 The expected behavior for the control law is to apply a torque equal to the direction the pendulum is swinging, such that more energy is added to the pendulum with each period, and when the pendulum finally has enough energy to perform a full rotation, apply a torque opposite to the movement such that the pendulum stops in an upright position.  
@@ -547,7 +569,7 @@ We run the previous operation on all states of the grid for an uncertain number 
 
 The problem is simple enough with the single-link pendulum case, but when extra links are added to the pendulum, such as the double-link pendulum, the problem becomes increasingly difficult to solve, but the algorithm can still find a sub-optimal policy with the modifications of redefining the state space, action space, and the iterate function.
 
-\subsection{Running through an example}
+\section{Running through an example}
 
 To better comprehend how this problem is solved, let’s take a first iteration from a single discrete point in the grid. Suppose we are analyzing the $\omega_0=\frac{\pi}{2}, \omega_0=1 rad/sec$, and since we are in the first iteration, our current policy is $\tau_0=0$. If we keep the current torque, we find that the next step is:
 	
@@ -615,12 +637,12 @@ Since $2.6032705 > 2.6002660$, we change the value $U(x_0)={-1}$. Giving a new o
 
 It is important to notice the optimal torque may completely change directions throughout the iterations due to the value of the neighbours changing. (Further details with the video)
 
-\subsection{Analysing this solution}
+\section{Analysing this solution}
 The algorithm is far from being real time, since for the single-link pendulum case, on an 8-core CPU at 2.8GHz, takes about 4 seconds for each iteration, and about 1 hour for the 1000 iterations, but it does generate very robust policy tables.
 
 On the following plot we show the policy of 10,000 iterations running against a pendulum, position of the pendulum relative to the up position, starting at pi, pointing down, and with 0 velocity. It is interesting to see that the policy follows similar to a bang-bang controller, using near maximum torque on both directions, until the system has enough energy to reach the necessary solution. (TODO: Talk about behavior near t=45seconds, where the exact amount of force is applied to get the up position)
 
-\subsection{CUDA}
+\section{CUDA}
 
 To first understand why using a GPGPU is a faster tool that fits to solve this problem, we must first take a look at the history of how games and GPUs, and how the computing model of GPU’s fits this problem.
 
@@ -644,14 +666,14 @@ For example, OpenGL could be used to perform the multiplication of two 256 by 25
 
 Later during 2007, NVIDIA released CUDA, a general purpose computing standard that would allow developers to create GPU based software, and later on 2008, the open source community followed with OpenCL. While OpenCL and CUDA follows the same principles as fragment shaders, it also opened doors for other applications, such as atomic operations, thread syncing, memory barriers, and others.
 
-\subsection{Applying DDP with CUDA}
+\section{Applying DDP with CUDA}
 Since a new improved torques can be found in parallel with other points, we can run the Dynamic Programming Algorithm using CUDA.  We initialize the process by allocating two memory buffers in the device, and reset all of the values to 0.  We create a CUDA kernel, which takes an identification number, input memory buffer, and compares the current policy with a new random policy, and stores the result on an output buffer. 
 
 We then swap the input buffer with the output buffer and repeat the process for the given number of iterations.  The process otherwise is equivalent to the CPU’s counterpart, but instead of taking up to 1 hour to complete, the GPU process only took 2 minutes. 
 
 The limitations with using a GPU for this kind of process is a more limited memory space, while it can be relatively cheap to buy more computer RAM, or allow the computer swap memory into a solid state drive, the GPU is limited to only to the memory available on the device, and even devices top of the line today, such as the NVIDIA Tegra 4, only provides 4GB of memory. 
 
-\section{Future Work}
+\chapter{Future Work}
 
 There the team has performed well on the DRC trials, it is important as well to create a strong code base that can evolve over the years, and adapt to future challenges. An important aspect of having a strong base is being able to perform experiments, and build upon previously developed work. 
 
